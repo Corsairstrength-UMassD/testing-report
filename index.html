@@ -1,0 +1,776 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Testing Reports</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --navy: #0b2a4a; --navy-2: #163d66; --gold: #c99a2e; --gold-soft: #fbf3df;
+    --bg: #f4f6f9; --card: #ffffff; --line: #dde2e9; --text: #16202c; --muted: #5b6472;
+    --good: #1a7f37; --bad: #b42318;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--text); background: var(--bg); }
+  h1, h2, h3 { margin: 0; line-height: 1.2; }
+  button, select, input { font: inherit; }
+
+  .topbar { background: var(--navy); color: #fff; padding: 14px 24px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+  .brand-title { font-weight: 700; font-size: 18px; }
+  .brand-sub { color: #c9d4e2; font-size: 13px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .btn { display: inline-block; border: 1px solid var(--line); background: #fff; color: var(--text); padding: 7px 14px; border-radius: 6px; cursor: pointer; text-decoration: none; font-size: 14px; }
+  .btn:hover { border-color: var(--navy-2); }
+  .btn.primary { background: var(--gold); border-color: var(--gold); color: #fff; font-weight: 600; }
+  .topbar .btn:not(.primary) { background: transparent; color: #fff; border-color: #5a7393; }
+
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 20px 24px 40px; }
+  .empty { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 32px; max-width: 720px; margin: 40px auto; }
+  .empty h2 { margin-bottom: 12px; }
+  .empty ol { padding-left: 20px; }
+  .empty li { margin: 6px 0; }
+
+  .controls { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: center; margin-bottom: 14px; }
+  .controls label { font-size: 13px; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+  .controls select { padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--text); }
+  .controls .spacer { flex: 1; }
+  .note { font-size: 13px; color: var(--muted); }
+
+  details.warn { background: #fff8e6; border: 1px solid #f0d58a; border-radius: 8px; padding: 8px 12px; margin-bottom: 14px; font-size: 13px; }
+  details.warn summary { cursor: pointer; font-weight: 600; }
+  details.warn ul { margin: 8px 0 0; padding-left: 18px; max-height: 220px; overflow: auto; }
+
+  .tabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 2px solid var(--line); margin-bottom: 18px; }
+  .tab { border: 0; background: none; padding: 9px 14px; cursor: pointer; color: var(--muted); border-bottom: 3px solid transparent; margin-bottom: -2px; font-weight: 600; }
+  .tab.on { color: var(--navy); border-bottom-color: var(--gold); }
+
+  .report-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; border-bottom: 3px solid var(--navy); padding-bottom: 8px; margin-bottom: 16px; }
+  .report-head .org { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .report-head h1 { font-size: 24px; color: var(--navy); }
+  .report-head .meta { font-size: 13px; color: var(--muted); text-align: right; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .card h3 { font-size: 15px; color: var(--navy); margin-bottom: 8px; }
+  .kv { display: flex; justify-content: space-between; font-size: 13px; padding: 2px 0; }
+  .kv span:first-child { color: var(--muted); }
+  .card ol { margin: 8px 0 6px; padding-left: 20px; font-size: 13px; }
+  .card ol li { display: list-item; }
+  .card ol li .v { float: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .stat { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .stat .lbl { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .stat .big { font-size: 24px; font-weight: 700; color: var(--navy); font-variant-numeric: tabular-nums; }
+  .stat .sub { font-size: 13px; color: var(--muted); }
+
+  .two { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+  @media (max-width: 860px) { .two { grid-template-columns: 1fr; } }
+
+  table { width: 100%; border-collapse: collapse; background: var(--card); font-size: 13.5px; }
+  th, td { padding: 6px 10px; border-bottom: 1px solid var(--line); text-align: left; }
+  th { background: var(--navy); color: #fff; font-weight: 600; font-size: 12.5px; position: sticky; top: 0; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  tbody tr:nth-child(even) td { background: #f8f9fb; }
+  .tablebox { border: 1px solid var(--line); border-radius: 10px; overflow: auto; }
+  .bar { height: 8px; background: var(--navy-2); border-radius: 4px; min-width: 2px; }
+  .barcell { width: 28%; }
+  .up { color: var(--good); font-weight: 600; }
+  .down { color: var(--bad); font-weight: 600; }
+  td.top { background: var(--gold-soft) !important; font-weight: 700; }
+  .rank1 td { font-weight: 700; }
+  .section-title { font-size: 14px; color: var(--navy); margin: 18px 0 8px; text-transform: uppercase; letter-spacing: .04em; }
+  .chart text { font-size: 11px; fill: var(--muted); }
+
+  .athlete-pick { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
+  .athlete-pick select { padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; min-width: 240px; }
+
+  .foot { text-align: center; font-size: 12px; color: var(--muted); padding: 10px 0 30px; }
+  .print-only { display: none; }
+
+  @media print {
+    @page { margin: 0.45in; }
+    body { background: #fff; font-size: 12px; }
+    .no-print { display: none !important; }
+    .wrap { padding: 0; max-width: none; }
+    .card, .stat, .tablebox { break-inside: avoid; border-color: #bbb; }
+    .tablebox { overflow: visible; border: 0; }
+    th { position: static; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    td.top, .bar, tbody tr:nth-child(even) td { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    thead { display: table-header-group; }
+    tr { break-inside: avoid; }
+    .two { grid-template-columns: 1fr; }
+    body.print-all #app, body.print-all footer { display: none !important; }
+    body.print-all .print-only { display: block; }
+    .page { break-after: page; }
+    .page:last-child { break-after: auto; }
+  }
+</style>
+</head>
+<body>
+<header class="topbar no-print">
+  <div>
+    <div class="brand-title" id="brandTitle"></div>
+    <div class="brand-sub">Testing Reports</div>
+  </div>
+  <div class="actions">
+    <label class="btn primary">Upload Excel or CSV<input type="file" id="file" accept=".xlsx,.xls,.csv" hidden></label>
+    <a class="btn" href="testing-template.xlsx" download>Download template</a>
+    <button class="btn" id="demoBtn" type="button">Try sample data</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <section id="empty" class="empty no-print">
+    <h2>Upload your testing sheet</h2>
+    <ol>
+      <li>Fill in the template: one row per athlete per testing day.</li>
+      <li>Type lifts as weight x reps (315x5). The tool calculates the estimated max.</li>
+      <li>Click <b>Upload Excel or CSV</b> and pick your file.</li>
+      <li>Pick a sport and a test day, then print what you need.</li>
+    </ol>
+    <p class="note">Your file is read inside this browser. Nothing is uploaded or saved anywhere.</p>
+    <p class="note" id="libError" hidden style="color:var(--bad)">The spreadsheet reader did not load. Check the internet connection and refresh.</p>
+  </section>
+
+  <section id="app" hidden>
+    <div class="controls no-print">
+      <label>Sport <select id="sportSel"></select></label>
+      <label>Test day <select id="dateSel"></select></label>
+      <span class="note" id="compareNote"></span>
+      <span class="spacer"></span>
+      <button class="btn" id="printBtn" type="button">Print this page</button>
+      <button class="btn" id="printAllBtn" type="button" hidden>Print all athlete reports</button>
+    </div>
+    <div id="warnings" class="no-print"></div>
+    <nav id="tabs" class="tabs no-print"></nav>
+    <main id="view"></main>
+  </section>
+</div>
+
+<div id="printAll" class="print-only"></div>
+<footer class="foot no-print">Your file is read in this browser. Nothing is uploaded or saved.</footer>
+
+<script>
+// =====================================================================
+// SETTINGS
+// =====================================================================
+const CONFIG = { title: 'Corsair Strength & Conditioning' };
+
+// Add a new test here and it shows up everywhere (tabs, reports, wall sheet).
+// type: lift = weight x reps -> estimated max | time = seconds | number = plain number | feetinches = broad jump style
+// aliases: header names the tool accepts (lowercase).
+const TESTS = [
+  { key: 'ten',   label: '10-Yard Dash',      short: '10 Yd', type: 'time',       unit: 's',  better: 'low',  aliases: ['10-yard', '10 yard', '10yd', '10-yd', '10 yd', '10 yard dash', '10-yard dash'] },
+  { key: 'vert',  label: 'Vertical Jump',     short: 'Vert',  type: 'number',     unit: 'in', better: 'high', aliases: ['vertical', 'vertical jump', 'vert', 'vj'] },
+  { key: 'broad', label: 'Broad Jump',        short: 'Broad', type: 'feetinches', unit: 'in', better: 'high', aliases: ['broad jump', 'broad', 'bj'] },
+  { key: 'bs',    label: 'Back Squat',        short: 'BS',    type: 'lift',       unit: 'lb', better: 'high', aliases: ['back squat', 'back squat (reps)', 'back squat 3-5 rm', 'bs'] },
+  { key: 'fs',    label: 'Front Squat',       short: 'FS',    type: 'lift',       unit: 'lb', better: 'high', aliases: ['front squat', 'front squat (reps)', 'fs'] },
+  { key: 'tbdl',  label: 'Trap Bar Deadlift', short: 'TBDL',  type: 'lift',       unit: 'lb', better: 'high', aliases: ['trap bar dl', 'trap bar deadlift', 'trap bar', 'tbdl'] },
+  { key: 'bench', label: 'Bench Press',       short: 'Bench', type: 'lift',       unit: 'lb', better: 'high', aliases: ['bench', 'bench press', 'bench (reps)'] },
+];
+
+// =====================================================================
+// ESTIMATED MAX: average of 7 formulas, then the rounding rule
+// =====================================================================
+function e1rm(w, r) {
+  const f = [
+    w * (1 + r / 30),                                   // Epley
+    w * 36 / (37 - r),                                  // Brzycki
+    100 * w / (101.3 - 2.67123 * r),                    // Lander
+    w * Math.pow(r, 0.10),                              // Lombardi
+    100 * w / (52.2 + 41.9 * Math.exp(-0.055 * r)),     // Mayhew
+    w * (1 + 0.025 * r),                                // O'Conner
+    100 * w / (48.8 + 53.8 * Math.exp(-0.075 * r)),     // Wathan
+  ];
+  return f.reduce((a, b) => a + b, 0) / 7;
+}
+// Drop the decimal, round to 5. Only a number ending in 4 or 9 rounds up.
+function roundMax(x) {
+  const n = Math.floor(x);
+  const base = n - (n % 5);
+  return n % 5 === 4 ? base + 5 : base;
+}
+function liftMax(w, r) { return r === 1 ? w : roundMax(e1rm(w, r)); }
+
+// =====================================================================
+// PARSING
+// =====================================================================
+const clean = v => v == null ? '' : String(v).replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+
+function parseLift(v) {
+  const s = clean(v);
+  if (!s) return null;
+  const m = s.match(/^(\d+(?:\.\d+)?)\s*[x×*]\s*(\d+)$/i);
+  if (m) {
+    const w = +m[1], r = +m[2];
+    if (r < 1 || r > 10) return { error: `"${s}" has ${r} reps. Use 1-10.` };
+    return { value: liftMax(w, r) };
+  }
+  if (/^\d+(\.\d+)?$/.test(s)) return { value: +s };
+  return { error: `"${s}" is not weight x reps.` };
+}
+function parseFraction(t) {
+  t = t.replace(/["”″]/g, '').trim();
+  if (!t) return 0;
+  const m = t.match(/^(\d*\.?\d+)?\s*(?:(\d+)\/(\d+))?$/);
+  if (!m || (m[1] == null && m[2] == null)) return NaN;
+  return (m[1] != null ? +m[1] : 0) + (m[2] != null ? +m[2] / +m[3] : 0);
+}
+function parseBroad(v) {
+  const s = clean(v).replace(/[’′‘`]/g, "'");
+  if (!s) return null;
+  const m = s.match(/^(\d+)\s*'\s*(.*)$/);
+  let inches;
+  if (m) {
+    const rest = parseFraction(m[2].replace(/'/g, ' '));  // 6'10'1/2 = 6' 10 1/2"
+    if (isNaN(rest)) return { error: `"${s}" is not a distance.` };
+    inches = +m[1] * 12 + rest;
+  } else {
+    const n = parseFraction(s);
+    if (isNaN(n)) return { error: `"${s}" is not a distance.` };
+    inches = n <= 15 ? n * 12 : n;  // 7 = 7 feet, 107 = 107 inches
+  }
+  return { value: inches };
+}
+function parseNum(v) {
+  const s = clean(v);
+  if (!s) return null;
+  const n = parseFloat(s.replace(/[^\d.]/g, ''));
+  if (isNaN(n) || !/\d/.test(s)) return { error: `"${s}" is not a number.` };
+  return { value: n };
+}
+const PARSE = { lift: parseLift, feetinches: parseBroad, time: parseNum, number: parseNum };
+
+const ymd = (y, m, d) => `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+function parseDate(v) {
+  if (v == null || v === '') return null;
+  if (typeof v === 'number') {
+    const d = new Date(Math.round((v - 25569) * 86400000));
+    return ymd(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate());
+  }
+  if (v instanceof Date) return ymd(v.getFullYear(), v.getMonth() + 1, v.getDate());
+  const s = clean(v);
+  let m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+  if (m) { let y = +m[3]; if (y < 100) y += 2000; return ymd(y, +m[1], +m[2]); }
+  m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) return ymd(+m[1], +m[2], +m[3]);
+  return null;
+}
+function displayName(s) {
+  s = clean(s);
+  if (s.includes(',')) {
+    const i = s.indexOf(',');
+    s = `${s.slice(i + 1).trim()} ${s.slice(0, i).trim()}`;
+  }
+  return s;
+}
+const nameKey = s => displayName(s).toLowerCase().replace(/[.,]/g, '').replace(/\s+/g, ' ').trim();
+
+// =====================================================================
+// LOAD
+// =====================================================================
+let DATA = [];       // one record per athlete per sport per date
+let WARN = [];
+const S = { sport: '__all', date: null, tab: 'overview', athlete: null };
+
+function loadWorkbook(wb) {
+  const recs = [], warn = [];
+  wb.SheetNames.forEach(sn => {
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, raw: true, defval: null, blankrows: false });
+    let hi = -1;
+    for (let i = 0; i < Math.min(10, rows.length); i++) {
+      if ((rows[i] || []).some(x => clean(x).toLowerCase() === 'name')) { hi = i; break; }
+    }
+    if (hi < 0) return;
+    const hdr = rows[hi].map(x => clean(x).toLowerCase());
+    const col = {
+      name: hdr.indexOf('name'),
+      date: hdr.indexOf('date'),
+      sport: hdr.findIndex(h => h === 'sport' || h === 'team'),
+      pos: hdr.findIndex(h => h === 'position' || h === 'pos'),
+    };
+    const testCols = [];
+    hdr.forEach((h, i) => {
+      if (h.includes('(em)')) return;
+      const t = TESTS.find(t => t.aliases.includes(h));
+      if (t) testCols.push({ t, i });
+    });
+    if (!testCols.length) return;
+    if (col.date < 0) { warn.push(`Tab "${sn}" skipped: it has no Date column.`); return; }
+    for (let r = hi + 1; r < rows.length; r++) {
+      const row = rows[r] || [];
+      const raw = clean(row[col.name]);
+      if (!raw) continue;
+      const date = parseDate(row[col.date]);
+      const where = `Tab "${sn}", row ${r + 1} (${displayName(raw)})`;
+      if (!date) { warn.push(`${where}: missing or unreadable date.`); continue; }
+      const rec = {
+        date,
+        name: displayName(raw),
+        sport: col.sport >= 0 ? (clean(row[col.sport]) || 'No sport listed') : 'No sport listed',
+        position: col.pos >= 0 ? clean(row[col.pos]).toUpperCase() : '',
+        values: {},
+      };
+      rec.id = nameKey(raw) + '|' + rec.sport.toLowerCase();
+      testCols.forEach(({ t, i }) => {
+        if (/^[a-z /]+$/i.test(clean(row[i]))) return;  // a note like "Injured" or "DNP": skip quietly
+        if (t.type === 'lift' && /\(tb\)/i.test(clean(row[i]))) return;  // "(TB)" = trap bar sub (kickers): not counted
+        if (/^[+-]\s*\d/.test(clean(row[i]))) return;  // "-5", "+20" = a change note. The tool figures change itself
+        const p = PARSE[t.type](row[i]);
+        if (!p) return;
+        if (p.error) { warn.push(`${where}, ${t.label}: ${p.error}`); return; }
+        rec.values[t.key] = p.value;
+      });
+      if (Object.keys(rec.values).length) recs.push(rec);
+    }
+  });
+
+  // Merge duplicate rows (same athlete, sport, day): keep the best of each test.
+  const merged = new Map();
+  recs.forEach(r => {
+    const k = r.id + '|' + r.date;
+    const m = merged.get(k);
+    if (!m) { merged.set(k, r); return; }
+    TESTS.forEach(t => {
+      const a = m.values[t.key], b = r.values[t.key];
+      if (b != null && (a == null || isBetter(t, b, a))) m.values[t.key] = b;
+    });
+    if (!m.position && r.position) m.position = r.position;
+  });
+  DATA = [...merged.values()];
+
+  // One position per athlete: the latest one listed.
+  const pos = new Map();
+  [...DATA].sort((a, b) => a.date.localeCompare(b.date)).forEach(r => { if (r.position) pos.set(r.id, r.position); });
+  DATA.forEach(r => { r.position = pos.get(r.id) || ''; });
+
+  WARN = warn;
+  if (!DATA.length) { alert('No testing data found. Check that the sheet has Name, Date, and at least one test column.'); return; }
+
+  const sports = [...new Set(DATA.map(r => r.sport))].sort();
+  S.sport = sports.length === 1 ? sports[0] : '__all';
+  S.date = null; S.tab = 'overview'; S.athlete = null;
+  document.getElementById('empty').hidden = true;
+  document.getElementById('app').hidden = false;
+  render();
+}
+
+// =====================================================================
+// HELPERS
+// =====================================================================
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const isBetter = (t, a, b) => t.better === 'low' ? a < b : a > b;
+const gain = (t, cur, prev) => t.better === 'low' ? prev - cur : cur - prev;
+const avg = arr => arr.reduce((a, b) => a + b, 0) / arr.length;
+
+function fmtDate(k, short) {
+  const [y, m, d] = k.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', short ? { month: 'numeric', day: 'numeric', year: '2-digit' } : { month: 'short', day: 'numeric', year: 'numeric' });
+}
+function fmtFtIn(inches) {
+  let ft = Math.floor(inches / 12);
+  let q = Math.round((inches - ft * 12) * 4) / 4;
+  if (q >= 12) { ft += 1; q -= 12; }
+  const whole = Math.floor(q);
+  const frac = { 0: '', 0.25: '¼', 0.5: '½', 0.75: '¾' }[q - whole];
+  return `${ft}' ${whole}${frac}"`;
+}
+function fmt(t, v, opts = {}) {
+  if (v == null) return '';
+  let s;
+  if (t.type === 'lift') s = String(Math.round(v));
+  else if (t.type === 'feetinches') return fmtFtIn(v);
+  else if (t.type === 'time') s = (Math.round(v * 1000) / 1000).toFixed(Math.round(v * 1000) % 10 ? 3 : 2);
+  else s = (Math.round(v * 10) / 10).toFixed(1);
+  return opts.unit ? `${s} ${t.unit}` : s;
+}
+// Change shown as the real difference (cur - prev), colored by whether it got better.
+function fmtChange(t, cur, prev) {
+  if (cur == null || prev == null) return '';
+  const d = cur - prev;
+  const g = gain(t, cur, prev);
+  let mag;
+  if (t.type === 'lift') mag = String(Math.round(Math.abs(d)));
+  else if (t.type === 'time') mag = Math.abs(d).toFixed(2);
+  else mag = String(Math.round(Math.abs(d) * 10) / 10);
+  if (+mag === 0) return `<span class="note">0</span>`;
+  const sign = d > 0 ? '+' : '-';
+  return `<span class="${g > 0 ? 'up' : 'down'}">${sign}${mag} ${t.unit}</span>`;
+}
+
+function scope() { return DATA.filter(r => S.sport === '__all' || r.sport === S.sport); }
+function datesIn(recs) { return [...new Set(recs.map(r => r.date))].sort(); }
+function prevDate(recs, d) { const ds = datesIn(recs).filter(x => x < d); return ds.length ? ds[ds.length - 1] : null; }
+function testsIn(recs) { return TESTS.filter(t => recs.some(r => r.values[t.key] != null)); }
+function onDay(recs, d) { return recs.filter(r => r.date === d); }
+function valMap(recs, d, t) {
+  const m = new Map();
+  recs.forEach(r => { if (r.date === d && r.values[t.key] != null) m.set(r.id, r.values[t.key]); });
+  return m;
+}
+function ranked(recs, d, t) {
+  const list = onDay(recs, d).filter(r => r.values[t.key] != null)
+    .map(r => ({ r, v: r.values[t.key] }))
+    .sort((a, b) => t.better === 'low' ? a.v - b.v : b.v - a.v);
+  list.forEach((x, i) => { x.rank = i > 0 && list[i - 1].v === x.v ? list[i - 1].rank : i + 1; });
+  return list;
+}
+function improvements(recs, d, p, t) {
+  if (!p) return [];
+  const prev = valMap(recs, p, t);
+  return onDay(recs, d).filter(r => r.values[t.key] != null && prev.has(r.id))
+    .map(r => ({ r, cur: r.values[t.key], prev: prev.get(r.id), g: gain(t, r.values[t.key], prev.get(r.id)) }))
+    .sort((a, b) => b.g - a.g);
+}
+function sportLabel() { return S.sport === '__all' ? 'All sports' : S.sport; }
+function head(title) {
+  const recs = scope();
+  const p = prevDate(recs, S.date);
+  return `<div class="report-head">
+    <div><div class="org">${esc(CONFIG.title)}</div><h1>${esc(title)}</h1></div>
+    <div class="meta">${esc(sportLabel())}<br>Test day: ${fmtDate(S.date)}${p ? `<br>Compared to ${fmtDate(p)}` : ''}</div>
+  </div>`;
+}
+
+// =====================================================================
+// CHARTS (hand-built SVG)
+// =====================================================================
+function lineChart(points, t) {
+  if (points.length < 2) return '';
+  const W = 460, H = 170, L = 30, R = 30, T = 22, B = 30;
+  const vs = points.map(p => p.v);
+  let lo = Math.min(...vs), hi = Math.max(...vs);
+  const pad = (hi - lo) * 0.25 || Math.abs(hi) * 0.05 || 1;
+  lo -= pad; hi += pad;
+  const x = i => L + (i * (W - L - R)) / (points.length - 1);
+  const y = v => T + (hi - v) * (H - T - B) / (hi - lo);
+  const path = points.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join(' ');
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Team average by test day">
+    <line x1="${L}" y1="${H - B}" x2="${W - R}" y2="${H - B}" stroke="#dde2e9"/>
+    <path d="${path}" fill="none" stroke="#163d66" stroke-width="2.5"/>
+    ${points.map((p, i) => `<circle cx="${x(i)}" cy="${y(p.v)}" r="4" fill="#c99a2e"/>
+      <text x="${x(i)}" y="${y(p.v) - 9}" text-anchor="middle" style="fill:#16202c;font-weight:600">${esc(fmt(t, p.v))}</text>
+      <text x="${x(i)}" y="${H - 10}" text-anchor="middle">${fmtDate(p.d, true)}</text>`).join('')}
+  </svg>`;
+}
+function sparkline(points) {
+  if (points.length < 2) return '';
+  const W = 90, H = 26, P = 4;
+  const vs = points.map(p => p.v);
+  const lo = Math.min(...vs), hi = Math.max(...vs), span = hi - lo || 1;
+  const x = i => P + (i * (W - 2 * P)) / (points.length - 1);
+  const y = v => H - P - ((v - lo) * (H - 2 * P)) / span;
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true">
+    <polyline points="${points.map((p, i) => `${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join(' ')}" fill="none" stroke="#163d66" stroke-width="1.8"/>
+    <circle cx="${x(points.length - 1)}" cy="${y(vs[vs.length - 1])}" r="2.6" fill="#c99a2e"/>
+  </svg>`;
+}
+
+// =====================================================================
+// VIEWS
+// =====================================================================
+function viewOverview() {
+  const recs = scope(), d = S.date, p = prevDate(recs, d);
+  const day = onDay(recs, d);
+  const tests = testsIn(day);
+  const cards = tests.map(t => {
+    const list = ranked(recs, d, t);
+    const imp = improvements(recs, d, p, t);
+    const best = imp.length && imp[0].g > 0 ? imp[0] : null;
+    return `<div class="card">
+      <h3>${esc(t.label)}</h3>
+      <div class="kv"><span>Team average</span><b>${fmt(t, avg(list.map(x => x.v)), { unit: t.type !== 'feetinches' })}</b></div>
+      <div class="kv"><span>Tested</span><b>${list.length}</b></div>
+      ${imp.length ? `<div class="kv"><span>Avg change (${imp.length} athletes)</span>${fmtChange(t, avg(imp.map(x => x.cur)), avg(imp.map(x => x.prev)))}</div>` : ''}
+      <ol>${list.slice(0, 5).map(x => `<li>${esc(x.r.name)}<span class="v">${fmt(t, x.v)}</span></li>`).join('')}</ol>
+      ${best ? `<div class="kv"><span>Most improved</span><span><b>${esc(best.r.name)}</b> ${fmtChange(t, best.cur, best.prev)}</span></div>` : ''}
+    </div>`;
+  }).join('');
+  return head('Team Overview') +
+    `<div class="stats">
+      <div class="stat"><div class="lbl">Athletes tested</div><div class="big">${new Set(day.map(r => r.id)).size}</div></div>
+      <div class="stat"><div class="lbl">Tests run</div><div class="big">${tests.length}</div></div>
+      <div class="stat"><div class="lbl">Testing days on file</div><div class="big">${datesIn(recs).length}</div></div>
+    </div>
+    <div class="grid">${cards}</div>` + positionTable(day, tests);
+}
+
+function positionTable(day, tests) {
+  const positions = [...new Set(day.map(r => r.position).filter(Boolean))].sort();
+  if (!positions.length) return '';
+  const rows = positions.map(pos => {
+    const group = day.filter(r => r.position === pos);
+    return `<tr><td><b>${esc(pos)}</b></td><td class="n">${group.length}</td>${tests.map(t => {
+      const v = group.map(r => r.values[t.key]).filter(v => v != null);
+      return `<td class="n">${v.length ? fmt(t, avg(v)) : ''}</td>`;
+    }).join('')}</tr>`;
+  }).join('');
+  return `<h3 class="section-title">Averages by position</h3>
+    <div class="tablebox"><table><thead><tr><th>Position</th><th class="n">Athletes</th>${tests.map(t => `<th class="n">${esc(t.short)}</th>`).join('')}</tr></thead>
+    <tbody>${rows}</tbody></table></div>`;
+}
+
+function viewTest(t) {
+  const recs = scope(), d = S.date, p = prevDate(recs, d);
+  const list = ranked(recs, d, t);
+  if (!list.length) return head(t.label) + `<p class="note">Nobody has a ${esc(t.label)} result on this test day.</p>`;
+  const prev = p ? valMap(recs, p, t) : new Map();
+  const imp = improvements(recs, d, p, t);
+  const top = list[0];
+  const vs = list.map(x => x.v), lo = Math.min(...vs), hi = Math.max(...vs);
+  const width = v => { const f = hi === lo ? 1 : (t.better === 'low' ? (hi - v) / (hi - lo) : (v - lo) / (hi - lo)); return 8 + f * 92; };
+  const trend = datesIn(recs).map(dd => {
+    const v = recs.filter(r => r.date === dd && r.values[t.key] != null).map(r => r.values[t.key]);
+    return v.length ? { d: dd, v: avg(v) } : null;
+  }).filter(Boolean);
+  const hasPos = list.some(x => x.r.position);
+  const rows = list.map(x => `<tr class="${x.rank === 1 ? 'rank1' : ''}">
+      <td class="n">${x.rank}</td><td>${esc(x.r.name)}</td>${hasPos ? `<td>${esc(x.r.position)}</td>` : ''}
+      ${S.sport === '__all' ? `<td>${esc(x.r.sport)}</td>` : ''}
+      <td class="n"><b>${fmt(t, x.v)}</b></td>
+      <td class="barcell"><div class="bar" style="width:${width(x.v).toFixed(0)}%"></div></td>
+      ${p ? `<td class="n">${fmtChange(t, x.v, prev.get(x.r.id))}</td>` : ''}
+    </tr>`).join('');
+  const best = imp.length && imp[0].g > 0 ? imp[0] : null;
+  return head(`${t.label} Leaderboard`) +
+    `<div class="stats">
+      <div class="stat"><div class="lbl">Team average</div><div class="big">${fmt(t, avg(vs))}</div><div class="sub">${t.type === 'feetinches' ? '' : t.unit + ', '}${list.length} tested</div></div>
+      <div class="stat"><div class="lbl">Top performer</div><div class="big">${fmt(t, top.v)}</div><div class="sub">${esc(top.r.name)}</div></div>
+      <div class="stat"><div class="lbl">Avg change</div><div class="big">${imp.length ? fmtChange(t, avg(imp.map(x => x.cur)), avg(imp.map(x => x.prev))) : '<span class="note">First test</span>'}</div><div class="sub">${imp.length ? `${imp.length} athletes tested both days` : 'Nothing to compare yet'}</div></div>
+      <div class="stat"><div class="lbl">Most improved</div><div class="big">${best ? fmtChange(t, best.cur, best.prev) : '<span class="note">None yet</span>'}</div><div class="sub">${best ? esc(best.r.name) : ''}</div></div>
+    </div>
+    <div class="two">
+      <div class="tablebox"><table><thead><tr><th class="n">#</th><th>Athlete</th>${hasPos ? '<th>Pos</th>' : ''}${S.sport === '__all' ? '<th>Sport</th>' : ''}
+        <th class="n">${esc(t.short)}${t.type === 'feetinches' ? '' : ` (${t.unit})`}</th><th></th>${p ? '<th class="n">Change</th>' : ''}</tr></thead>
+        <tbody>${rows}</tbody></table></div>
+      <div>
+        ${trend.length > 1 ? `<div class="card"><h3>Team average by test day</h3>${lineChart(trend, t)}${t.better === 'low' ? '<div class="note">Lower is better.</div>' : ''}</div>` : ''}
+        ${hasPos ? positionTable(onDay(recs, d), [t]).replace('Averages by position', 'By position') : ''}
+      </div>
+    </div>`;
+}
+
+function athletesOnDay() {
+  const recs = scope();
+  return onDay(recs, S.date).sort((a, b) => a.name.localeCompare(b.name));
+}
+function athleteReport(id) {
+  const recs = scope(), d = S.date, p = prevDate(recs, d);
+  const mine = recs.filter(r => r.id === id).sort((a, b) => a.date.localeCompare(b.date));
+  if (!mine.length) return '';
+  const me = mine[mine.length - 1];
+  const cur = mine.find(r => r.date === d);
+  const prevRec = p ? mine.find(r => r.date === p) : null;
+  const tests = testsIn(mine);
+  const rows = tests.map(t => {
+    const v = cur ? cur.values[t.key] : null;
+    const pv = prevRec ? prevRec.values[t.key] : null;
+    const list = ranked(recs, d, t);
+    const mineRank = list.find(x => x.r.id === id);
+    const history = mine.filter(r => r.values[t.key] != null).map(r => ({ d: r.date, v: r.values[t.key] }));
+    const best = history.reduce((b, h) => b == null || isBetter(t, h.v, b) ? h.v : b, null);
+    return `<tr>
+      <td><b>${esc(t.label)}</b></td>
+      <td class="n"><b>${v != null ? fmt(t, v) : '<span class="note">Did not test</span>'}</b></td>
+      <td class="n">${pv != null ? fmt(t, pv) : ''}</td>
+      <td class="n">${fmtChange(t, v, pv)}</td>
+      <td class="n">${mineRank ? `${mineRank.rank} of ${list.length}` : ''}</td>
+      <td class="n">${list.length ? fmt(t, avg(list.map(x => x.v))) : ''}</td>
+      <td class="n">${best != null ? fmt(t, best) : ''}${best != null && v != null && best === v && history.length > 1 ? ' <span class="up">PR</span>' : ''}</td>
+      <td>${sparkline(history)}</td>
+    </tr>`;
+  }).join('');
+  return `<div class="report-head">
+      <div><div class="org">${esc(CONFIG.title)}</div><h1>${esc(me.name)}</h1></div>
+      <div class="meta">${esc(me.sport)}${me.position ? ' · ' + esc(me.position) : ''}<br>Test day: ${fmtDate(d)}${p ? `<br>Compared to ${fmtDate(p)}` : ''}</div>
+    </div>
+    <div class="tablebox"><table>
+      <thead><tr><th>Test</th><th class="n">This test</th><th class="n">Last test</th><th class="n">Change</th><th class="n">Team rank</th><th class="n">Team avg</th><th class="n">Best ever</th><th>Trend</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>
+    <p class="note">Lifts are estimated maxes from weight x reps (lb). Jumps in inches; broad jump in feet and inches. 10-yard in seconds, lower is better.</p>`;
+}
+function viewAthletes() {
+  const list = athletesOnDay();
+  if (!list.length) return head('Athlete Reports') + '<p class="note">No athletes tested on this day.</p>';
+  if (!S.athlete || !list.some(r => r.id === S.athlete)) S.athlete = list[0].id;
+  const i = list.findIndex(r => r.id === S.athlete);
+  return `<div class="athlete-pick no-print">
+      <button class="btn" type="button" data-step="-1" ${i === 0 ? 'disabled' : ''}>Previous</button>
+      <select id="athleteSel">${list.map(r => `<option value="${esc(r.id)}" ${r.id === S.athlete ? 'selected' : ''}>${esc(r.name)}${S.sport === '__all' ? ' (' + esc(r.sport) + ')' : ''}</option>`).join('')}</select>
+      <button class="btn" type="button" data-step="1" ${i === list.length - 1 ? 'disabled' : ''}>Next</button>
+      <span class="note">${i + 1} of ${list.length}</span>
+    </div>` + athleteReport(S.athlete);
+}
+
+function viewWall() {
+  const recs = scope(), d = S.date;
+  const day = onDay(recs, d);
+  const tests = testsIn(day);
+  const hasPos = day.some(r => r.position);
+  const tops = {};
+  tests.forEach(t => { const l = ranked(recs, d, t); tops[t.key] = l.length ? l[0].v : null; });
+  const sorted = [...day].sort((a, b) =>
+    (S.sport === '__all' ? a.sport.localeCompare(b.sport) : 0) ||
+    (hasPos ? (a.position || 'ZZ').localeCompare(b.position || 'ZZ') : 0) ||
+    a.name.localeCompare(b.name));
+  const rows = sorted.map(r => `<tr><td><b>${esc(r.name)}</b></td>${hasPos ? `<td>${esc(r.position)}</td>` : ''}${S.sport === '__all' ? `<td>${esc(r.sport)}</td>` : ''}
+    ${tests.map(t => { const v = r.values[t.key]; return `<td class="n ${v != null && v === tops[t.key] ? 'top' : ''}">${fmt(t, v)}</td>`; }).join('')}</tr>`).join('');
+  return head('Wall Sheet') +
+    `<div class="tablebox"><table><thead><tr><th>Athlete</th>${hasPos ? '<th>Pos</th>' : ''}${S.sport === '__all' ? '<th>Sport</th>' : ''}
+      ${tests.map(t => `<th class="n">${esc(t.short)}${t.type === 'feetinches' ? '' : ` (${t.unit})`}</th>`).join('')}</tr></thead>
+      <tbody>${rows}</tbody></table></div>
+    <p class="note">Gold = top result on the team for that test.</p>`;
+}
+
+// =====================================================================
+// RENDER
+// =====================================================================
+function render() {
+  const sports = [...new Set(DATA.map(r => r.sport))].sort();
+  const sportSel = document.getElementById('sportSel');
+  sportSel.innerHTML = (sports.length > 1 ? `<option value="__all">All sports</option>` : '') +
+    sports.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+  sportSel.value = S.sport;
+
+  const recs = scope();
+  const dates = datesIn(recs);
+  if (!S.date || !dates.includes(S.date)) S.date = dates[dates.length - 1];
+  const dateSel = document.getElementById('dateSel');
+  dateSel.innerHTML = [...dates].reverse().map(d => `<option value="${d}">${fmtDate(d)}</option>`).join('');
+  dateSel.value = S.date;
+  const p = prevDate(recs, S.date);
+  document.getElementById('compareNote').textContent = p ? `Compared to ${fmtDate(p)}` : 'First test day on file. Nothing to compare yet.';
+
+  const warnBox = document.getElementById('warnings');
+  warnBox.innerHTML = WARN.length ? `<details class="warn"><summary>${WARN.length} cell${WARN.length > 1 ? 's' : ''} could not be read. Click to see which.</summary>
+    <ul>${WARN.map(w => `<li>${esc(w)}</li>`).join('')}</ul></details>` : '';
+
+  const tests = testsIn(recs);
+  const tabs = [['overview', 'Team Overview'], ...tests.map(t => [t.key, t.label]), ['athletes', 'Athlete Reports'], ['wall', 'Wall Sheet']];
+  if (!tabs.some(x => x[0] === S.tab)) S.tab = 'overview';
+  document.getElementById('tabs').innerHTML = tabs.map(([k, l]) => `<button type="button" class="tab ${k === S.tab ? 'on' : ''}" data-tab="${k}">${esc(l)}</button>`).join('');
+
+  const t = TESTS.find(t => t.key === S.tab);
+  const view = document.getElementById('view');
+  view.innerHTML = S.tab === 'overview' ? viewOverview() : S.tab === 'athletes' ? viewAthletes() : S.tab === 'wall' ? viewWall() : viewTest(t);
+  document.getElementById('printAllBtn').hidden = S.tab !== 'athletes';
+  document.getElementById('printBtn').textContent = S.tab === 'athletes' ? 'Print this athlete' : 'Print this page';
+}
+
+// =====================================================================
+// PRINT
+// =====================================================================
+let pageStyle = null;
+function setPageSize(landscape) {
+  if (!pageStyle) { pageStyle = document.createElement('style'); document.head.appendChild(pageStyle); }
+  pageStyle.textContent = landscape ? '@page { size: landscape; }' : '';
+}
+window.addEventListener('afterprint', () => {
+  document.body.classList.remove('print-all');
+  document.getElementById('printAll').innerHTML = '';
+  setPageSize(false);
+});
+
+// =====================================================================
+// EVENTS
+// =====================================================================
+document.getElementById('brandTitle').textContent = CONFIG.title;
+
+document.getElementById('file').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try { loadWorkbook(XLSX.read(new Uint8Array(ev.target.result), { type: 'array' })); }
+    catch (err) { alert('Could not read that file. Save it as .xlsx or .csv and try again.\n\n' + err.message); }
+  };
+  reader.readAsArrayBuffer(f);
+  e.target.value = '';
+});
+document.getElementById('demoBtn').addEventListener('click', loadDemo);
+document.getElementById('sportSel').addEventListener('change', e => { S.sport = e.target.value; render(); });
+document.getElementById('dateSel').addEventListener('change', e => { S.date = e.target.value; render(); });
+document.getElementById('tabs').addEventListener('click', e => {
+  const b = e.target.closest('[data-tab]');
+  if (b) { S.tab = b.dataset.tab; render(); }
+});
+document.getElementById('view').addEventListener('change', e => {
+  if (e.target.id === 'athleteSel') { S.athlete = e.target.value; render(); }
+});
+document.getElementById('view').addEventListener('click', e => {
+  const b = e.target.closest('[data-step]');
+  if (!b) return;
+  const list = athletesOnDay();
+  const i = list.findIndex(r => r.id === S.athlete) + +b.dataset.step;
+  if (list[i]) { S.athlete = list[i].id; render(); }
+});
+document.getElementById('printBtn').addEventListener('click', () => { setPageSize(S.tab === 'wall'); window.print(); });
+document.getElementById('printAllBtn').addEventListener('click', () => {
+  document.getElementById('printAll').innerHTML = athletesOnDay().map(r => `<div class="page">${athleteReport(r.id)}</div>`).join('');
+  document.body.classList.add('print-all');
+  setPageSize(false);
+  window.print();
+});
+
+// =====================================================================
+// SAMPLE DATA (made-up athletes, for trying the tool)
+// =====================================================================
+function loadDemo() {
+  let seed = 7;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const pick = a => a[Math.floor(rnd() * a.length)];
+  const first = ['Jake', 'Marcus', 'Tyler', 'Devin', 'Chris', 'Owen', 'Liam', 'Mason', 'Ethan', 'Noah', 'Caleb', 'Jordan', 'Ryan', 'Logan', 'Evan', 'Nate', 'Cole', 'Gavin', 'Luke', 'Sam'];
+  const last = ['Miller', 'Brooks', 'Carter', 'Hayes', 'Price', 'Reed', 'Foster', 'Bennett', 'Coleman', 'Ward', 'Perry', 'Sullivan', 'Hughes', 'Long', 'Ross', 'Barnes', 'Fisher', 'Henderson', 'Jenkins', 'Powell'];
+  const dates = ['1/26/26', '3/9/26', '4/27/26'];
+  const teams = [
+    { sport: 'Football', n: 26, pos: ['WR', 'RB', 'QB', 'OL', 'DL', 'LB', 'DB'], tests: ['10-Yard', 'Vertical', 'Broad Jump', 'Back Squat', 'Bench'] },
+    { sport: 'Hockey', n: 18, pos: ['F', 'D', 'G'], tests: ['Vertical', 'Broad Jump', 'Front Squat', 'Trap Bar DL', 'Bench'] },
+  ];
+  const head = ['Date', 'Name', 'Sport', 'Position', '10-Yard', 'Vertical', 'Broad Jump', 'Back Squat', 'Front Squat', 'Trap Bar DL', 'Bench'];
+  const rows = [head];
+  const used = new Set();
+  teams.forEach(team => {
+    for (let a = 0; a < team.n; a++) {
+      let name;
+      do { name = `${pick(first)} ${pick(last)}`; } while (used.has(name));
+      used.add(name);
+      const pos = pick(team.pos);
+      const big = ['OL', 'DL', 'D'].includes(pos) ? 1.25 : 1;
+      const base = { speed: 1.62 + rnd() * 0.3 * big, vert: 22 + rnd() * 10 / big, broad: 88 + rnd() * 24 / big,
+        bs: 285 + rnd() * 140 * big, fs: 215 + rnd() * 100 * big, tbdl: 345 + rnd() * 150 * big, bench: 205 + rnd() * 110 * big };
+      dates.forEach((d, di) => {
+        if (rnd() < 0.12) return;  // missed a test day
+        const g = di * (0.01 + rnd() * 0.03);
+        const lift = (b, key) => { const w = Math.round(b * (1 + g) / 1.15 / 5) * 5; return `${w}x${2 + Math.floor(rnd() * 4)}`; };
+        const vals = {
+          '10-Yard': +(base.speed * (1 - g / 3)).toFixed(3),
+          'Vertical': +(base.vert * (1 + g / 2)).toFixed(1),
+          'Broad Jump': (() => { const i = Math.round(base.broad * (1 + g / 3) * 2) / 2; const ft = Math.floor(i / 12), r = i - ft * 12; return `${ft}'${Math.floor(r)}${r % 1 ? ' 1/2' : ''}`; })(),
+          'Back Squat': lift(base.bs), 'Front Squat': lift(base.fs), 'Trap Bar DL': lift(base.tbdl), 'Bench': lift(base.bench),
+        };
+        rows.push(head.map(h => h === 'Date' ? d : h === 'Name' ? name : h === 'Sport' ? team.sport : h === 'Position' ? pos :
+          team.tests.includes(h) && rnd() > 0.06 ? vals[h] : null));
+      });
+    }
+  });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Testing');
+  loadWorkbook(wb);
+}
+
+if (typeof XLSX === 'undefined') {
+  document.getElementById('libError').hidden = false;
+} else if (location.hash.startsWith('#demo')) {
+  // #demo loads sample data. #demo&tab=bs&sport=Football opens a tab (handy for checking pages).
+  loadDemo();
+  const h = new URLSearchParams(location.hash.slice(1));
+  if (h.get('sport')) S.sport = h.get('sport');
+  if (h.get('tab')) S.tab = h.get('tab');
+  render();
+}
+</script>
+</body>
+</html>
