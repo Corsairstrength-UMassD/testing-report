@@ -4,11 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Testing Reports</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
   :root {
-    --navy: #0b2a4a; --navy-2: #163d66; --gold: #c99a2e; --gold-soft: #fbf3df;
-    --bg: #f4f6f9; --card: #ffffff; --line: #dde2e9; --text: #16202c; --muted: #5b6472;
+    /* UMassD brand: Blue #003764, Gold #FFB915, Metro Blue #A1C5E1 */
+    --blue: #003764; --blue-2: #1f5a8c; --gold: #FFB915; --metro: #A1C5E1;
+    --accent: #FFB915; --accent-dark: #b3820f; --on-accent: #003764; --tint: #d6e7f4;
+    --bg: #f3f6f9; --card: #ffffff; --paper: #ffffff; --text: #16202c; --muted: #5b6472; --line: #dfe5ec; --head: #003764; --stripe: #f6f8fa;
     --good: #1a7f37; --bad: #b42318;
   }
   * { box-sizing: border-box; }
@@ -17,26 +22,30 @@
   h1, h2, h3 { margin: 0; line-height: 1.2; }
   button, select, input { font: inherit; }
 
-  .topbar { background: var(--navy); color: #fff; padding: 14px 24px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+  /* ---------- interface (version 1 style) ---------- */
+  .topbar { background: var(--blue); color: #fff; padding: 12px 24px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+  .brandbox { display: flex; align-items: center; gap: 12px; }
+  .brandbox img { height: 40px; width: auto; display: block; background: #fff; padding: 3px; border-radius: 4px; }
   .brand-title { font-weight: 700; font-size: 18px; }
-  .brand-sub { color: #c9d4e2; font-size: 13px; }
+  .brand-sub { color: var(--metro); font-size: 13px; }
   .actions { display: flex; flex-wrap: wrap; gap: 8px; }
   .btn { display: inline-block; border: 1px solid var(--line); background: #fff; color: var(--text); padding: 7px 14px; border-radius: 6px; cursor: pointer; text-decoration: none; font-size: 14px; }
-  .btn:hover { border-color: var(--navy-2); }
-  .btn.primary { background: var(--gold); border-color: var(--gold); color: #fff; font-weight: 600; }
-  .topbar .btn:not(.primary) { background: transparent; color: #fff; border-color: #5a7393; }
+  .btn:hover { border-color: var(--blue-2); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.primary { background: var(--gold); border-color: var(--gold); color: var(--blue); font-weight: 700; }
+  .topbar .btn:not(.primary) { background: transparent; color: #fff; border-color: #4f7aa3; }
 
   .wrap { max-width: 1180px; margin: 0 auto; padding: 20px 24px 40px; }
   .empty { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 32px; max-width: 720px; margin: 40px auto; }
-  .empty h2 { margin-bottom: 12px; }
+  .empty h2 { margin-bottom: 12px; color: var(--blue); }
   .empty ol { padding-left: 20px; }
   .empty li { margin: 6px 0; }
 
   .controls { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: center; margin-bottom: 14px; }
   .controls label { font-size: 13px; color: var(--muted); display: flex; gap: 8px; align-items: center; }
-  .controls select { padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--text); }
+  .controls select { padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--text); max-width: 260px; }
   .controls .spacer { flex: 1; }
-  .note { font-size: 13px; color: var(--muted); }
+  .hint { font-size: 13px; color: var(--muted); }
 
   details.warn { background: #fff8e6; border: 1px solid #f0d58a; border-radius: 8px; padding: 8px 12px; margin-bottom: 14px; font-size: 13px; }
   details.warn summary { cursor: pointer; font-weight: 600; }
@@ -44,50 +53,95 @@
 
   .tabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 2px solid var(--line); margin-bottom: 18px; }
   .tab { border: 0; background: none; padding: 9px 14px; cursor: pointer; color: var(--muted); border-bottom: 3px solid transparent; margin-bottom: -2px; font-weight: 600; }
-  .tab.on { color: var(--navy); border-bottom-color: var(--gold); }
+  .tab.on { color: var(--blue); border-bottom-color: var(--gold); }
 
-  .report-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; border-bottom: 3px solid var(--navy); padding-bottom: 8px; margin-bottom: 16px; }
-  .report-head .org { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
-  .report-head h1 { font-size: 24px; color: var(--navy); }
-  .report-head .meta { font-size: 13px; color: var(--muted); text-align: right; }
-
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
-  .card h3 { font-size: 15px; color: var(--navy); margin-bottom: 8px; }
-  .kv { display: flex; justify-content: space-between; font-size: 13px; padding: 2px 0; }
-  .kv span:first-child { color: var(--muted); }
-  .card ol { margin: 8px 0 6px; padding-left: 20px; font-size: 13px; }
-  .card ol li { display: list-item; }
-  .card ol li .v { float: right; font-variant-numeric: tabular-nums; font-weight: 600; }
-
-  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 16px; }
-  .stat { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
-  .stat .lbl { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
-  .stat .big { font-size: 24px; font-weight: 700; color: var(--navy); font-variant-numeric: tabular-nums; }
-  .stat .sub { font-size: 13px; color: var(--muted); }
-
-  .two { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 16px; align-items: start; }
-  @media (max-width: 860px) { .two { grid-template-columns: 1fr; } }
-
-  table { width: 100%; border-collapse: collapse; background: var(--card); font-size: 13.5px; }
-  th, td { padding: 6px 10px; border-bottom: 1px solid var(--line); text-align: left; }
-  th { background: var(--navy); color: #fff; font-weight: 600; font-size: 12.5px; position: sticky; top: 0; }
-  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
-  tbody tr:nth-child(even) td { background: #f8f9fb; }
-  .tablebox { border: 1px solid var(--line); border-radius: 10px; overflow: auto; }
-  .bar { height: 8px; background: var(--navy-2); border-radius: 4px; min-width: 2px; }
-  .barcell { width: 28%; }
-  .up { color: var(--good); font-weight: 600; }
-  .down { color: var(--bad); font-weight: 600; }
-  td.top { background: var(--gold-soft) !important; font-weight: 700; }
-  .rank1 td { font-weight: 700; }
-  .section-title { font-size: 14px; color: var(--navy); margin: 18px 0 8px; text-transform: uppercase; letter-spacing: .04em; }
-  .chart text { font-size: 11px; fill: var(--muted); }
-
-  .athlete-pick { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
-  .athlete-pick select { padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; min-width: 240px; }
+  /* Branding settings (opens from the top bar) */
+  .modal-bg { position: fixed; inset: 0; background: rgba(0, 20, 40, .55); display: flex; align-items: flex-start; justify-content: center; padding: 60px 16px; z-index: 10; }
+  .modal { background: #fff; border-radius: 10px; width: 100%; max-width: 460px; padding: 20px 22px; box-shadow: 0 12px 40px rgba(0,0,0,.25); }
+  .modal h2 { color: var(--blue); font-size: 20px; margin-bottom: 4px; }
+  .modal .lbl { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 14px 0 6px; }
+  .field { width: 100%; border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .row .field { flex: 1; }
+  .colorbox { width: 40px; height: 38px; border: 1px solid var(--line); border-radius: 6px; padding: 0; background: none; cursor: pointer; }
+  .swatches { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .sw { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--line); cursor: pointer; padding: 0; }
+  .sw.on { box-shadow: 0 0 0 2px var(--blue); }
+  .modal .done { margin-top: 18px; display: flex; justify-content: space-between; align-items: center; }
 
   .foot { text-align: center; font-size: 12px; color: var(--muted); padding: 10px 0 30px; }
+
+  /* ---------- reports (version 2 style, UMassD colors) ---------- */
+  .paper { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 30px 34px 20px; font-family: Barlow, system-ui, sans-serif; }
+  @media (max-width: 760px) { .paper { padding: 20px 14px; } }
+</style>
+<style>
+  .note { font-size: 12px; color: var(--muted); font-style: italic; margin-top: 8px; }
+
+  .rh { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding-bottom: 12px; border-bottom: 2px solid var(--head); }
+  .rh img { height: 56px; width: auto; display: block; }
+  .rh-word { font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 22px; line-height: .95; text-transform: uppercase; color: var(--head); }
+  .rh-right { text-align: right; }
+  .rh-name { font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 22px; color: var(--head); }
+  .rh-sub { font-size: 12px; color: var(--muted); }
+  .rtitle { margin: 18px 0 14px; }
+  .rtitle h1 { font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 28px; color: var(--head); }
+  .rsub { font-family: "Barlow Condensed", sans-serif; font-size: 13px; letter-spacing: .08em; color: var(--muted); }
+
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
+  .kpi { background: var(--accent); color: var(--on-accent); text-align: center; padding: 12px 8px 10px; border-radius: 3px; }
+  .kv1 { font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 30px; line-height: 1.05; }
+  .kv1 span { color: inherit !important; }
+  .kl { font-family: "Barlow Condensed", sans-serif; font-size: 12px; letter-spacing: .07em; text-transform: uppercase; opacity: .85; margin-top: 2px; }
+  @media (max-width: 700px) { .kpis { grid-template-columns: 1fr 1fr; } }
+
+  table.rt { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 16px; }
+  .rt th { background: var(--head); color: #fff; font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; padding: 7px 10px; text-align: left; }
+  .rt td { padding: 6px 10px; border-bottom: 1px solid var(--line); }
+  .rt td.n, .rt th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  .rt tbody tr:nth-child(even) td { background: var(--stripe); }
+  .rt tr.podium td { background: var(--tint) !important; }
+  .rt td.top { background: var(--tint) !important; font-weight: 800; }
+  .medal { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: var(--head); color: #fff; font-size: 11px; font-weight: 700; }
+  .medal.gold { background: var(--accent); color: var(--on-accent); }
+
+  .box, .acard { border: 1px solid var(--line); border-radius: 4px; overflow: hidden; margin-bottom: 14px; break-inside: avoid; background: #fff; }
+  .boxh { background: var(--head); color: #fff; display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 7px 12px;
+    font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 15px; }
+  .boxr { color: var(--accent); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
+  .boxb { padding: 12px 14px; }
+  .acb { padding: 10px 12px 8px; }
+  .cards3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .cards3 .box, .cards3 .acard { margin-bottom: 0; }
+  .cards3.athletes { margin: 4px 0 16px; }
+  .cards3 + .sec, .cards3 + .rt { margin-top: 18px; }
+  @media (max-width: 860px) { .cards3 { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 560px) { .cards3 { grid-template-columns: 1fr; } }
+
+  .bigv { font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 28px; line-height: 1; color: var(--head); font-variant-numeric: tabular-nums; }
+  .bigv small { font-size: 14px; font-weight: 600; color: var(--muted); }
+  .bigv.gold { color: var(--accent-dark); }
+  .kl2 { font-family: "Barlow Condensed", sans-serif; font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); margin-top: 3px; }
+  .ov-top, .ac-two { display: flex; justify-content: space-between; align-items: flex-end; gap: 8px; }
+  .right { text-align: right; }
+  .pr { display: inline-block; margin-left: 6px; background: var(--accent); color: var(--on-accent); font-size: 11px; padding: 2px 5px; vertical-align: middle; border-radius: 2px; }
+  .acc { font-size: 12.5px; margin: 6px 0 2px; }
+  .acf { font-size: 11px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 5px; margin-top: 4px; }
+  .nochart { font-size: 11px; color: var(--muted); text-align: center; padding: 18px 0; }
+  .top5 { margin: 10px 0 6px; }
+  .t5 { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 3px 0; }
+  .t5 .nm { flex: 1; }
+  .t5 b { font-variant-numeric: tabular-nums; }
+  .mi { font-size: 12.5px; border-top: 1px solid var(--line); padding-top: 6px; color: var(--muted); }
+  .mi b { color: var(--text); }
+  .sec { font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 20px; color: var(--head); margin: 6px 0 8px; }
+
+  .up { color: var(--good); font-weight: 700; }
+  .down { color: var(--bad); font-weight: 700; }
+  .chart text { font-size: 11px; fill: var(--muted); font-family: Barlow, sans-serif; }
+  .chart text.cv { fill: var(--text); font-weight: 700; }
+  .rfoot { text-align: center; font-family: "Barlow Condensed", sans-serif; font-size: 11px; letter-spacing: .08em; color: var(--muted); border-top: 1px solid var(--line); padding-top: 10px; margin-top: 18px; }
+
   .print-only { display: none; }
 
   @media print {
@@ -95,15 +149,19 @@
     body { background: #fff; font-size: 12px; }
     .no-print { display: none !important; }
     .wrap { padding: 0; max-width: none; }
-    .card, .stat, .tablebox { break-inside: avoid; border-color: #bbb; }
-    .tablebox { overflow: visible; border: 0; }
-    th { position: static; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    td.top, .bar, tbody tr:nth-child(even) td { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .paper { margin: 0; padding: 0; border: 0; border-radius: 0; }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     thead { display: table-header-group; }
     tr { break-inside: avoid; }
-    .two { grid-template-columns: 1fr; }
-    body.print-all #app, body.print-all footer { display: none !important; }
-    body.print-all .print-only { display: block; }
+    .cards3 { grid-template-columns: repeat(3, 1fr) !important; gap: 8px; }
+    .kpis { grid-template-columns: repeat(4, 1fr) !important; margin-bottom: 12px; }
+    .bigv { font-size: 22px; }
+    .rtitle { margin: 10px 0 10px; }
+    .acb .chart { max-height: 48px; }
+    .rt td { padding: 4px 10px; }
+    .rfoot { margin-top: 8px; padding-top: 6px; }
+    body.print-all .wrap, body.print-all footer { display: none !important; }
+    body.print-all .print-only { display: block; font-family: Barlow, system-ui, sans-serif; }
     .page { break-after: page; }
     .page:last-child { break-after: auto; }
   }
@@ -111,14 +169,15 @@
 </head>
 <body>
 <header class="topbar no-print">
-  <div>
-    <div class="brand-title" id="brandTitle"></div>
-    <div class="brand-sub">Testing Reports</div>
+  <div class="brandbox">
+    <div id="topLogo"></div>
+    <div><div class="brand-title" id="brandTitle"></div><div class="brand-sub">Testing Reports</div></div>
   </div>
   <div class="actions">
     <label class="btn primary">Upload Excel or CSV<input type="file" id="file" accept=".xlsx,.xls,.csv" hidden></label>
     <a class="btn" href="testing-template.xlsx" download>Download template</a>
     <button class="btn" id="demoBtn" type="button">Try sample data</button>
+    <button class="btn" id="brandBtn" type="button">Branding</button>
   </div>
 </header>
 
@@ -131,23 +190,47 @@
       <li>Click <b>Upload Excel or CSV</b> and pick your file.</li>
       <li>Pick a sport and a test day, then print what you need.</li>
     </ol>
-    <p class="note">Your file is read inside this browser. Nothing is uploaded or saved anywhere.</p>
-    <p class="note" id="libError" hidden style="color:var(--bad)">The spreadsheet reader did not load. Check the internet connection and refresh.</p>
+    <p class="hint">Your file is read inside this browser. Nothing is uploaded or saved anywhere.</p>
+    <p class="hint" id="libError" hidden style="color:var(--bad)">The spreadsheet reader did not load. Check the internet connection and refresh.</p>
   </section>
 
   <section id="app" hidden>
     <div class="controls no-print">
       <label>Sport <select id="sportSel"></select></label>
       <label>Test day <select id="dateSel"></select></label>
-      <span class="note" id="compareNote"></span>
+      <label id="athleteBox" hidden>Athlete
+        <button class="btn" type="button" data-step="-1">Prev</button>
+        <select id="athleteSel"></select>
+        <button class="btn" type="button" data-step="1">Next</button>
+      </label>
+      <span class="hint" id="compareNote"></span>
       <span class="spacer"></span>
       <button class="btn" id="printBtn" type="button">Print this page</button>
-      <button class="btn" id="printAllBtn" type="button" hidden>Print all athlete reports</button>
+      <button class="btn" id="printAllBtn" type="button" hidden>Print all athletes</button>
     </div>
     <div id="warnings" class="no-print"></div>
     <nav id="tabs" class="tabs no-print"></nav>
-    <main id="view"></main>
+    <main class="paper" id="paper"><div id="view"></div></main>
   </section>
+</div>
+
+<div class="modal-bg no-print" id="brandModal" hidden>
+  <div class="modal" role="dialog" aria-label="Branding">
+    <h2>Branding</h2>
+    <div class="hint">Shows on every report and printout. Saved in this browser only.</div>
+    <div class="lbl">Program name</div>
+    <input class="field" id="titleIn" maxlength="60">
+    <div class="lbl">Accent color</div>
+    <div class="row"><input type="color" class="colorbox" id="colorIn"><input class="field" id="colorHex" maxlength="7"></div>
+    <div class="swatches" id="swatches"></div>
+    <div class="lbl">Logo</div>
+    <div class="row">
+      <label class="btn">Upload logo<input type="file" id="logoIn" accept="image/*" hidden></label>
+      <button class="btn" type="button" id="logoClear">Remove</button>
+      <span class="hint">A wide logo (about 2:1) looks best.</span>
+    </div>
+    <div class="done"><button class="btn" type="button" id="brandReset">Reset to UMassD</button><button class="btn primary" type="button" id="brandClose">Done</button></div>
+  </div>
 </div>
 
 <div id="printAll" class="print-only"></div>
@@ -348,7 +431,12 @@ function loadWorkbook(wb) {
   DATA.forEach(r => { r.position = pos.get(r.id) || ''; });
 
   WARN = warn;
-  if (!DATA.length) { alert('No testing data found. Check that the sheet has Name, Date, and at least one test column.'); return; }
+  if (!DATA.length) {
+    alert('No testing data found in this file.\n\n' +
+      'The tool reads one row per athlete per testing day, with columns named Date, Name, and at least one test (like Vertical or Back Squat). Sport and Position are optional.\n\n' +
+      'Click "Download template" for a sheet that is ready to fill in.');
+    return;
+  }
 
   const sports = [...new Set(DATA.map(r => r.sport))].sort();
   S.sport = sports.length === 1 ? sports[0] : '__all';
@@ -426,48 +514,67 @@ function improvements(recs, d, p, t) {
     .sort((a, b) => b.g - a.g);
 }
 function sportLabel() { return S.sport === '__all' ? 'All sports' : S.sport; }
-function head(title) {
-  const recs = scope();
-  const p = prevDate(recs, S.date);
-  return `<div class="report-head">
-    <div><div class="org">${esc(CONFIG.title)}</div><h1>${esc(title)}</h1></div>
-    <div class="meta">${esc(sportLabel())}<br>Test day: ${fmtDate(S.date)}${p ? `<br>Compared to ${fmtDate(p)}` : ''}</div>
-  </div>`;
+const caps = s => esc(s).toUpperCase();
+
+// ---------- report building blocks (LEAD-style) ----------
+function reportHead(title, subtitle, rightName, rightSub) {
+  return `<div class="rh">
+      <div class="rh-left">${BRAND.logo ? `<img src="${BRAND.logo}" alt="">` : `<div class="rh-word">${esc(BRAND.title).replace(/ &amp; | /, '<br>')}</div>`}</div>
+      <div class="rh-right"><div class="rh-name">${esc(rightName)}</div><div class="rh-sub">${rightSub}</div></div>
+    </div>
+    <div class="rtitle"><h1>${esc(title)}</h1><div class="rsub">${subtitle}</div></div>`;
+}
+function dayLine() {
+  const p = prevDate(scope(), S.date);
+  return `${fmtDate(S.date)}${p ? ` vs ${fmtDate(p)}` : ''}`;
+}
+function foot(what) { return `<div class="rfoot">${caps(BRAND.title)} &nbsp;•&nbsp; ${esc(what)}</div>`; }
+function kpis(items) {
+  return `<div class="kpis">${items.map(([v, l]) => `<div class="kpi"><div class="kv1">${v}</div><div class="kl">${l}</div></div>`).join('')}</div>`;
+}
+const medal = rank => `<span class="medal ${rank <= 3 ? 'gold' : ''}">${rank}</span>`;
+function box(title, right, body) {
+  return `<div class="box"><div class="boxh"><span>${title}</span>${right ? `<span class="boxr">${right}</span>` : ''}</div><div class="boxb">${body}</div></div>`;
+}
+function changeWords(t, cur, prev, since) {
+  if (cur == null) return '';
+  if (prev == null) return `<span class="note">No result last test day</span>`;
+  const g = gain(t, cur, prev);
+  const d = Math.abs(cur - prev);
+  const mag = t.type === 'lift' ? Math.round(d) : t.type === 'time' ? d.toFixed(2) : Math.round(d * 10) / 10;
+  if (+mag === 0) return `<span class="note">No change ${since}</span>`;
+  const word = t.better === 'low' ? (g > 0 ? 'faster' : 'slower') : (g > 0 ? 'better' : 'down');
+  return `<span class="${g > 0 ? 'up' : 'down'}">${mag} ${t.unit} ${word} ${since}</span>`;
 }
 
-// =====================================================================
-// CHARTS (hand-built SVG)
-// =====================================================================
-function lineChart(points, t) {
-  if (points.length < 2) return '';
-  const W = 460, H = 170, L = 30, R = 30, T = 22, B = 30;
+// ---------- charts ----------
+let chartId = 0;
+function areaChart(points, t, o = {}) {
+  if (points.length < 2) return o.mini ? '<div class="nochart">One test on file</div>' : '';
+  const W = o.w || 1000, H = o.h || 230, L = o.mini ? 8 : 34, R = o.mini ? 8 : 34, T = o.mini ? 8 : 26, B = o.mini ? 8 : 30;
   const vs = points.map(p => p.v);
   let lo = Math.min(...vs), hi = Math.max(...vs);
-  const pad = (hi - lo) * 0.25 || Math.abs(hi) * 0.05 || 1;
+  const pad = (hi - lo) * 0.2 || Math.abs(hi) * 0.03 || 1;
   lo -= pad; hi += pad;
+  // Lower-is-better tests are drawn upside down, so up always means better.
+  const flip = t.better === 'low';
   const x = i => L + (i * (W - L - R)) / (points.length - 1);
-  const y = v => T + (hi - v) * (H - T - B) / (hi - lo);
-  const path = points.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join(' ');
-  return `<svg class="chart" viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Team average by test day">
-    <line x1="${L}" y1="${H - B}" x2="${W - R}" y2="${H - B}" stroke="#dde2e9"/>
-    <path d="${path}" fill="none" stroke="#163d66" stroke-width="2.5"/>
-    ${points.map((p, i) => `<circle cx="${x(i)}" cy="${y(p.v)}" r="4" fill="#c99a2e"/>
-      <text x="${x(i)}" y="${y(p.v) - 9}" text-anchor="middle" style="fill:#16202c;font-weight:600">${esc(fmt(t, p.v))}</text>
-      <text x="${x(i)}" y="${H - 10}" text-anchor="middle">${fmtDate(p.d, true)}</text>`).join('')}
+  const y = v => { const f = (v - lo) / (hi - lo); return T + (flip ? f : 1 - f) * (H - T - B); };
+  const id = 'g' + (++chartId);
+  const line = points.map((p, i) => `${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join(' ');
+  const area = `${x(0).toFixed(1)},${H - B} ${line} ${x(points.length - 1).toFixed(1)},${H - B}`;
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="none" role="img" aria-label="${esc(t.label)} by test day">
+    <defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity=".35"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>
+    <polygon points="${area}" fill="url(#${id})"/>
+    <polyline points="${line}" fill="none" stroke="var(--accent-dark)" stroke-width="${o.mini ? 2 : 2.5}" vector-effect="non-scaling-stroke"/>
+    ${points.map((p, i) => `<circle cx="${x(i)}" cy="${y(p.v)}" r="${o.mini ? 3 : (i === points.length - 1 ? 6 : 4)}" fill="${i === points.length - 1 ? 'var(--accent)' : 'var(--accent-dark)'}" vector-effect="non-scaling-stroke"/>
+      ${o.mini ? '' : `<text x="${x(i)}" y="${y(p.v) - 11}" text-anchor="middle" class="cv">${esc(fmt(t, p.v))}</text>
+      <text x="${x(i)}" y="${H - 9}" text-anchor="middle">${fmtDate(p.d, true)}</text>`}`).join('')}
   </svg>`;
 }
-function sparkline(points) {
-  if (points.length < 2) return '';
-  const W = 90, H = 26, P = 4;
-  const vs = points.map(p => p.v);
-  const lo = Math.min(...vs), hi = Math.max(...vs), span = hi - lo || 1;
-  const x = i => P + (i * (W - 2 * P)) / (points.length - 1);
-  const y = v => H - P - ((v - lo) * (H - 2 * P)) / span;
-  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true">
-    <polyline points="${points.map((p, i) => `${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join(' ')}" fill="none" stroke="#163d66" stroke-width="1.8"/>
-    <circle cx="${x(points.length - 1)}" cy="${y(vs[vs.length - 1])}" r="2.6" fill="#c99a2e"/>
-  </svg>`;
-}
+const history = (recs, id, t) => recs.filter(r => r.id === id && r.values[t.key] != null)
+  .sort((a, b) => a.date.localeCompare(b.date)).map(r => ({ d: r.date, v: r.values[t.key] }));
+const bestOf = (t, h) => h.reduce((b, x) => b == null || isBetter(t, x.v, b) ? x.v : b, null);
 
 // =====================================================================
 // VIEWS
@@ -476,26 +583,24 @@ function viewOverview() {
   const recs = scope(), d = S.date, p = prevDate(recs, d);
   const day = onDay(recs, d);
   const tests = testsIn(day);
+  let prs = 0;
+  day.forEach(r => tests.forEach(t => {
+    const h = history(recs, r.id, t).filter(x => x.d <= d);
+    if (h.length > 1 && h[h.length - 1].d === d && h[h.length - 1].v === bestOf(t, h) && h.slice(0, -1).every(x => x.v !== h[h.length - 1].v)) prs++;
+  }));
   const cards = tests.map(t => {
     const list = ranked(recs, d, t);
     const imp = improvements(recs, d, p, t);
     const best = imp.length && imp[0].g > 0 ? imp[0] : null;
-    return `<div class="card">
-      <h3>${esc(t.label)}</h3>
-      <div class="kv"><span>Team average</span><b>${fmt(t, avg(list.map(x => x.v)), { unit: t.type !== 'feetinches' })}</b></div>
-      <div class="kv"><span>Tested</span><b>${list.length}</b></div>
-      ${imp.length ? `<div class="kv"><span>Avg change (${imp.length} athletes)</span>${fmtChange(t, avg(imp.map(x => x.cur)), avg(imp.map(x => x.prev)))}</div>` : ''}
-      <ol>${list.slice(0, 5).map(x => `<li>${esc(x.r.name)}<span class="v">${fmt(t, x.v)}</span></li>`).join('')}</ol>
-      ${best ? `<div class="kv"><span>Most improved</span><span><b>${esc(best.r.name)}</b> ${fmtChange(t, best.cur, best.prev)}</span></div>` : ''}
-    </div>`;
+    return box(esc(t.label), `${list.length} tested`, `
+      <div class="ov-top"><div><div class="bigv">${fmt(t, avg(list.map(x => x.v)))}<small>${t.type === 'feetinches' ? '' : ' ' + t.unit}</small></div><div class="kl2">Team average</div></div>
+        <div class="right">${imp.length ? fmtChange(t, avg(imp.map(x => x.cur)), avg(imp.map(x => x.prev))) : ''}<div class="kl2">${imp.length ? 'Avg change' : ''}</div></div></div>
+      <div class="top5">${list.slice(0, 5).map(x => `<div class="t5">${medal(x.rank)}<span class="nm">${esc(x.r.name)}</span><b>${fmt(t, x.v)}</b></div>`).join('')}</div>
+      ${best ? `<div class="mi">Most improved: <b>${esc(best.r.name)}</b> ${fmtChange(t, best.cur, best.prev)}</div>` : ''}`);
   }).join('');
-  return head('Team Overview') +
-    `<div class="stats">
-      <div class="stat"><div class="lbl">Athletes tested</div><div class="big">${new Set(day.map(r => r.id)).size}</div></div>
-      <div class="stat"><div class="lbl">Tests run</div><div class="big">${tests.length}</div></div>
-      <div class="stat"><div class="lbl">Testing days on file</div><div class="big">${datesIn(recs).length}</div></div>
-    </div>
-    <div class="grid">${cards}</div>` + positionTable(day, tests);
+  return reportHead('Team Overview', `TEAM SUMMARY // ${caps(sportLabel())} // ${caps(fmtDate(d))}`, sportLabel(), dayLine()) +
+    kpis([[new Set(day.map(r => r.id)).size, 'Athletes tested'], [tests.length, 'Tests run'], [prs, 'Personal records'], [datesIn(recs).length, 'Test days on file']]) +
+    `<div class="cards3">${cards}</div>` + positionTable(day, tests) + foot('Team Overview');
 }
 
 function positionTable(day, tests) {
@@ -508,54 +613,58 @@ function positionTable(day, tests) {
       return `<td class="n">${v.length ? fmt(t, avg(v)) : ''}</td>`;
     }).join('')}</tr>`;
   }).join('');
-  return `<h3 class="section-title">Averages by position</h3>
-    <div class="tablebox"><table><thead><tr><th>Position</th><th class="n">Athletes</th>${tests.map(t => `<th class="n">${esc(t.short)}</th>`).join('')}</tr></thead>
-    <tbody>${rows}</tbody></table></div>`;
+  return `<div class="sec">Averages by position</div>
+    <table class="rt"><thead><tr><th>Position</th><th class="n">Athletes</th>${tests.map(t => `<th class="n">${esc(t.short)}</th>`).join('')}</tr></thead>
+    <tbody>${rows}</tbody></table>`;
 }
 
 function viewTest(t) {
   const recs = scope(), d = S.date, p = prevDate(recs, d);
   const list = ranked(recs, d, t);
-  if (!list.length) return head(t.label) + `<p class="note">Nobody has a ${esc(t.label)} result on this test day.</p>`;
+  const order = t.better === 'low' ? 'FASTEST FIRST' : 'BEST FIRST';
+  const sub = `TEAM SUMMARY // RANKED BY ${caps(t.label)} (${order}) // ${caps(sportLabel())}`;
+  if (!list.length) return reportHead(`${t.label} Leaderboard`, sub, sportLabel(), dayLine()) + `<p class="note">Nobody has a ${esc(t.label)} result on this test day.</p>`;
   const prev = p ? valMap(recs, p, t) : new Map();
   const imp = improvements(recs, d, p, t);
-  const top = list[0];
-  const vs = list.map(x => x.v), lo = Math.min(...vs), hi = Math.max(...vs);
-  const width = v => { const f = hi === lo ? 1 : (t.better === 'low' ? (hi - v) / (hi - lo) : (v - lo) / (hi - lo)); return 8 + f * 92; };
+  const best = imp.length && imp[0].g > 0 ? imp[0] : null;
+  const hasPos = list.some(x => x.r.position);
+  const unit = t.type === 'feetinches' ? '' : t.unit;
+  const rows = list.map(x => {
+    const h = history(recs, x.r.id, t);
+    return `<tr class="${x.rank <= 3 ? 'podium' : ''}">
+      <td>${medal(x.rank)}</td><td>${esc(x.r.name)}</td>${hasPos ? `<td>${esc(x.r.position)}</td>` : ''}${S.sport === '__all' ? `<td>${esc(x.r.sport)}</td>` : ''}
+      <td class="n">${h.length}</td>
+      <td class="n">${prev.has(x.r.id) ? fmt(t, prev.get(x.r.id)) : ''}</td>
+      <td class="n"><b>${fmt(t, x.v)}</b></td>
+      <td class="n">${fmt(t, bestOf(t, h))}</td>
+      <td class="n">${p ? fmtChange(t, x.v, prev.get(x.r.id)) : ''}</td></tr>`;
+  }).join('');
   const trend = datesIn(recs).map(dd => {
     const v = recs.filter(r => r.date === dd && r.values[t.key] != null).map(r => r.values[t.key]);
     return v.length ? { d: dd, v: avg(v) } : null;
   }).filter(Boolean);
-  const hasPos = list.some(x => x.r.position);
-  const rows = list.map(x => `<tr class="${x.rank === 1 ? 'rank1' : ''}">
-      <td class="n">${x.rank}</td><td>${esc(x.r.name)}</td>${hasPos ? `<td>${esc(x.r.position)}</td>` : ''}
-      ${S.sport === '__all' ? `<td>${esc(x.r.sport)}</td>` : ''}
-      <td class="n"><b>${fmt(t, x.v)}</b></td>
-      <td class="barcell"><div class="bar" style="width:${width(x.v).toFixed(0)}%"></div></td>
-      ${p ? `<td class="n">${fmtChange(t, x.v, prev.get(x.r.id))}</td>` : ''}
-    </tr>`).join('');
-  const best = imp.length && imp[0].g > 0 ? imp[0] : null;
-  return head(`${t.label} Leaderboard`) +
-    `<div class="stats">
-      <div class="stat"><div class="lbl">Team average</div><div class="big">${fmt(t, avg(vs))}</div><div class="sub">${t.type === 'feetinches' ? '' : t.unit + ', '}${list.length} tested</div></div>
-      <div class="stat"><div class="lbl">Top performer</div><div class="big">${fmt(t, top.v)}</div><div class="sub">${esc(top.r.name)}</div></div>
-      <div class="stat"><div class="lbl">Avg change</div><div class="big">${imp.length ? fmtChange(t, avg(imp.map(x => x.cur)), avg(imp.map(x => x.prev))) : '<span class="note">First test</span>'}</div><div class="sub">${imp.length ? `${imp.length} athletes tested both days` : 'Nothing to compare yet'}</div></div>
-      <div class="stat"><div class="lbl">Most improved</div><div class="big">${best ? fmtChange(t, best.cur, best.prev) : '<span class="note">None yet</span>'}</div><div class="sub">${best ? esc(best.r.name) : ''}</div></div>
-    </div>
-    <div class="two">
-      <div class="tablebox"><table><thead><tr><th class="n">#</th><th>Athlete</th>${hasPos ? '<th>Pos</th>' : ''}${S.sport === '__all' ? '<th>Sport</th>' : ''}
-        <th class="n">${esc(t.short)}${t.type === 'feetinches' ? '' : ` (${t.unit})`}</th><th></th>${p ? '<th class="n">Change</th>' : ''}</tr></thead>
-        <tbody>${rows}</tbody></table></div>
-      <div>
-        ${trend.length > 1 ? `<div class="card"><h3>Team average by test day</h3>${lineChart(trend, t)}${t.better === 'low' ? '<div class="note">Lower is better.</div>' : ''}</div>` : ''}
-        ${hasPos ? positionTable(onDay(recs, d), [t]).replace('Averages by position', 'By position') : ''}
-      </div>
-    </div>`;
+  const cards = list.map(x => {
+    const h = history(recs, x.r.id, t).filter(z => z.d <= d);
+    return `<div class="acard"><div class="boxh"><span>${esc(x.r.name)}</span><span class="boxr">RANK ${x.rank} / ${list.length}</span></div>
+      <div class="acb"><div class="ac-top"><div class="bigv">${fmt(t, x.v)}<small>${unit ? ' ' + unit : ''}</small></div><div class="kl2">This test</div></div>
+      <div class="acc">${h.length > 1 ? changeWords(t, x.v, prev.get(x.r.id), "since last test") : "<span class=\"note\">First test on file</span>"}</div>
+      ${areaChart(h, t, { mini: true, w: 240, h: 54 })}
+      <div class="acf">${h.length} test${h.length > 1 ? 's' : ''} on file • best ${fmt(t, bestOf(t, h))}${x.r.position ? ' • ' + esc(x.r.position) : ''}</div></div></div>`;
+  }).join('');
+  return reportHead(`${t.label} Leaderboard`, sub, sportLabel(), dayLine()) +
+    kpis([[list.length, 'Athletes tested'], [fmt(t, avg(list.map(x => x.v))) + (unit ? ' ' + unit : ''), 'Team average'],
+      [fmt(t, list[0].v) + (unit ? ' ' + unit : ''), `Leader - ${esc(list[0].r.name)}`],
+      [best ? fmtChange(t, best.cur, best.prev).replace(/class="(up|down)"/, '') : '-', best ? `Most improved - ${esc(best.r.name)}` : 'Most improved']]) +
+    `<table class="rt"><thead><tr><th>Rank</th><th>Athlete</th>${hasPos ? '<th>Pos</th>' : ''}${S.sport === '__all' ? '<th>Sport</th>' : ''}
+      <th class="n">Tests</th><th class="n">Last test</th><th class="n">This test</th><th class="n">Best ever</th><th class="n">Change</th></tr></thead><tbody>${rows}</tbody></table>
+    ${trend.length > 1 ? box('Team average by test day', `${trend.length} test days`, areaChart(trend, t) + (t.better === 'low' ? '<div class="note">Lower is better. Chart is flipped so up means faster.</div>' : '')) : ''}
+    <div class="cards3 athletes">${cards}</div>
+    ${hasPos ? positionTable(onDay(recs, d), [t]) : ''}
+    <div class="note">Ranked by ${esc(t.label)} on ${fmtDate(d)}. Change compares to each athlete's last test${p ? ` (${fmtDate(p)})` : ''}.</div>` + foot(`${t.label} Leaderboard`);
 }
 
 function athletesOnDay() {
-  const recs = scope();
-  return onDay(recs, S.date).sort((a, b) => a.name.localeCompare(b.name));
+  return onDay(scope(), S.date).sort((a, b) => a.name.localeCompare(b.name));
 }
 function athleteReport(id) {
   const recs = scope(), d = S.date, p = prevDate(recs, d);
@@ -565,44 +674,47 @@ function athleteReport(id) {
   const cur = mine.find(r => r.date === d);
   const prevRec = p ? mine.find(r => r.date === p) : null;
   const tests = testsIn(mine);
-  const rows = tests.map(t => {
+  let prs = 0, improved = 0, bestRank = null;
+  const cards = [], rows = [];
+  tests.forEach(t => {
     const v = cur ? cur.values[t.key] : null;
     const pv = prevRec ? prevRec.values[t.key] : null;
     const list = ranked(recs, d, t);
-    const mineRank = list.find(x => x.r.id === id);
-    const history = mine.filter(r => r.values[t.key] != null).map(r => ({ d: r.date, v: r.values[t.key] }));
-    const best = history.reduce((b, h) => b == null || isBetter(t, h.v, b) ? h.v : b, null);
-    return `<tr>
-      <td><b>${esc(t.label)}</b></td>
-      <td class="n"><b>${v != null ? fmt(t, v) : '<span class="note">Did not test</span>'}</b></td>
-      <td class="n">${pv != null ? fmt(t, pv) : ''}</td>
-      <td class="n">${fmtChange(t, v, pv)}</td>
-      <td class="n">${mineRank ? `${mineRank.rank} of ${list.length}` : ''}</td>
-      <td class="n">${list.length ? fmt(t, avg(list.map(x => x.v))) : ''}</td>
-      <td class="n">${best != null ? fmt(t, best) : ''}${best != null && v != null && best === v && history.length > 1 ? ' <span class="up">PR</span>' : ''}</td>
-      <td>${sparkline(history)}</td>
-    </tr>`;
-  }).join('');
-  return `<div class="report-head">
-      <div><div class="org">${esc(CONFIG.title)}</div><h1>${esc(me.name)}</h1></div>
-      <div class="meta">${esc(me.sport)}${me.position ? ' · ' + esc(me.position) : ''}<br>Test day: ${fmtDate(d)}${p ? `<br>Compared to ${fmtDate(p)}` : ''}</div>
-    </div>
-    <div class="tablebox"><table>
-      <thead><tr><th>Test</th><th class="n">This test</th><th class="n">Last test</th><th class="n">Change</th><th class="n">Team rank</th><th class="n">Team avg</th><th class="n">Best ever</th><th>Trend</th></tr></thead>
-      <tbody>${rows}</tbody></table></div>
-    <p class="note">Lifts are estimated maxes from weight x reps (lb). Jumps in inches; broad jump in feet and inches. 10-yard in seconds, lower is better.</p>`;
+    const mr = list.find(x => x.r.id === id);
+    const h = history(recs, id, t).filter(z => z.d <= d);
+    const best = bestOf(t, h);
+    const first = h.length ? h[0].v : null;
+    const isPR = v != null && h.length > 1 && v === best && h.slice(0, -1).every(z => z.v !== v);
+    if (isPR) prs++;
+    if (v != null && pv != null && gain(t, v, pv) > 0) improved++;
+    if (mr && (!bestRank || mr.rank / list.length < bestRank.f)) bestRank = { f: mr.rank / list.length, txt: `${mr.rank} / ${list.length}`, t };
+    const unit = t.type === 'feetinches' ? '' : t.unit;
+    cards.push(`<div class="acard"><div class="boxh"><span>${esc(t.label)}</span><span class="boxr">${mr ? `RANK ${mr.rank} / ${list.length}` : 'DID NOT TEST'}</span></div>
+      <div class="acb"><div class="ac-two">
+          <div><div class="bigv">${v != null ? fmt(t, v) : '-'}<small>${v != null && unit ? ' ' + unit : ''}</small></div><div class="kl2">This test</div></div>
+          <div class="right"><div class="bigv gold">${best != null ? fmt(t, best) : ''}${isPR ? '<span class="pr">PR</span>' : ''}</div><div class="kl2">All-time best</div></div></div>
+        <div class="acc">${v != null ? (h.length > 1 ? changeWords(t, v, pv, 'since last test') : '<span class="note">First test on file</span>') : '<span class="note">Did not test on this day</span>'}</div>
+        ${areaChart(h, t, { mini: true, w: 240, h: 64 })}
+        <div class="acf">${h.length} test${h.length > 1 ? 's' : ''} on file • team avg ${list.length ? fmt(t, avg(list.map(x => x.v))) : '-'}</div></div></div>`);
+    rows.push(`<tr><td><b>${esc(t.label)}</b></td><td class="n"><b>${v != null ? fmt(t, v) : ''}</b></td><td class="n">${pv != null ? fmt(t, pv) : ''}</td>
+      <td class="n">${fmtChange(t, v, pv)}</td><td class="n">${first != null && h.length > 1 ? fmt(t, first) : ''}</td>
+      <td class="n">${h.length > 1 ? fmtChange(t, v, first) : ''}</td><td class="n">${best != null ? fmt(t, best) : ''}</td></tr>`);
+  });
+  const who = `${me.sport}${me.position ? ' · ' + me.position : ''}`;
+  return reportHead('Athlete Testing Report', `INDIVIDUAL ATHLETE REPORT // ${caps(me.name)} // ${caps(who)}`, me.name, dayLine()) +
+    kpis([[cur ? Object.keys(cur.values).length : 0, 'Tests completed'], [prs, 'Personal records'],
+      [`${improved}`, 'Improved since last test'], [bestRank ? bestRank.txt : '-', bestRank ? `Best rank - ${esc(bestRank.t.short)}` : 'Best rank']]) +
+    `<div class="cards3">${cards.join('')}</div>
+    <div class="sec">Test history</div>
+    <table class="rt"><thead><tr><th>Test</th><th class="n">This test</th><th class="n">Last test</th><th class="n">Change</th><th class="n">First test</th><th class="n">Since first</th><th class="n">Best ever</th></tr></thead>
+      <tbody>${rows.join('')}</tbody></table>
+    <div class="note">Lifts are estimated maxes from weight x reps (lb). Jumps in inches; broad jump in feet and inches. 10-yard in seconds, lower is better.</div>` + foot(`${me.name} Testing Report`);
 }
 function viewAthletes() {
   const list = athletesOnDay();
-  if (!list.length) return head('Athlete Reports') + '<p class="note">No athletes tested on this day.</p>';
+  if (!list.length) return reportHead('Athlete Testing Report', 'INDIVIDUAL ATHLETE REPORT', sportLabel(), dayLine()) + '<p class="note">No athletes tested on this day.</p>';
   if (!S.athlete || !list.some(r => r.id === S.athlete)) S.athlete = list[0].id;
-  const i = list.findIndex(r => r.id === S.athlete);
-  return `<div class="athlete-pick no-print">
-      <button class="btn" type="button" data-step="-1" ${i === 0 ? 'disabled' : ''}>Previous</button>
-      <select id="athleteSel">${list.map(r => `<option value="${esc(r.id)}" ${r.id === S.athlete ? 'selected' : ''}>${esc(r.name)}${S.sport === '__all' ? ' (' + esc(r.sport) + ')' : ''}</option>`).join('')}</select>
-      <button class="btn" type="button" data-step="1" ${i === list.length - 1 ? 'disabled' : ''}>Next</button>
-      <span class="note">${i + 1} of ${list.length}</span>
-    </div>` + athleteReport(S.athlete);
+  return athleteReport(S.athlete);
 }
 
 function viewWall() {
@@ -618,15 +730,52 @@ function viewWall() {
     a.name.localeCompare(b.name));
   const rows = sorted.map(r => `<tr><td><b>${esc(r.name)}</b></td>${hasPos ? `<td>${esc(r.position)}</td>` : ''}${S.sport === '__all' ? `<td>${esc(r.sport)}</td>` : ''}
     ${tests.map(t => { const v = r.values[t.key]; return `<td class="n ${v != null && v === tops[t.key] ? 'top' : ''}">${fmt(t, v)}</td>`; }).join('')}</tr>`).join('');
-  return head('Wall Sheet') +
-    `<div class="tablebox"><table><thead><tr><th>Athlete</th>${hasPos ? '<th>Pos</th>' : ''}${S.sport === '__all' ? '<th>Sport</th>' : ''}
+  return reportHead('Wall Sheet', `EVERY ATHLETE // ${caps(sportLabel())} // ${caps(fmtDate(d))}`, sportLabel(), fmtDate(d)) +
+    `<table class="rt wall"><thead><tr><th>Athlete</th>${hasPos ? '<th>Pos</th>' : ''}${S.sport === '__all' ? '<th>Sport</th>' : ''}
       ${tests.map(t => `<th class="n">${esc(t.short)}${t.type === 'feetinches' ? '' : ` (${t.unit})`}</th>`).join('')}</tr></thead>
-      <tbody>${rows}</tbody></table></div>
-    <p class="note">Gold = top result on the team for that test.</p>`;
+      <tbody>${rows}</tbody></table>
+    <div class="note">Highlighted = top result on the team for that test.</div>` + foot('Wall Sheet');
 }
 
 // =====================================================================
-// RENDER
+// BRANDING (saved in this browser only)
+// =====================================================================
+const SWATCHES = ['#FFB915', '#003764', '#A1C5E1', '#c8102e', '#00563f', '#4b4b4b'];  // UMassD Gold, Blue, Metro Blue first
+const BRAND = { title: CONFIG.title, color: SWATCHES[0], logo: '' };
+const BRAND_KEY = 'trb-brand-v3';
+try {
+  const saved = JSON.parse(localStorage.getItem(BRAND_KEY) || '{}');
+  Object.assign(BRAND, saved);
+} catch (e) { /* storage blocked: defaults are fine */ }
+function saveBrand() {
+  try { localStorage.setItem(BRAND_KEY, JSON.stringify(BRAND)); } catch (e) { /* storage full or blocked */ }
+}
+// Mix a hex color toward black (amt < 0) or white (amt > 0).
+function shade(hex, amt) {
+  const n = parseInt(hex.slice(1), 16);
+  const c = [n >> 16, (n >> 8) & 255, n & 255].map(v => Math.round(amt < 0 ? v * (1 + amt) : v + (255 - v) * amt));
+  return '#' + c.map(v => v.toString(16).padStart(2, '0')).join('');
+}
+function applyBrand() {
+  const root = document.documentElement.style;
+  const n = parseInt(BRAND.color.slice(1), 16);
+  const light = (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) > 150;
+  root.setProperty('--accent', BRAND.color);
+  root.setProperty('--accent-dark', light ? shade(BRAND.color, -0.3) : BRAND.color);
+  root.setProperty('--tint', '#d6e7f4');  // Metro Blue, lightened
+  root.setProperty('--on-accent', light ? '#003764' : '#ffffff');
+  document.getElementById('titleIn').value = BRAND.title;
+  document.getElementById('colorIn').value = BRAND.color;
+  document.getElementById('colorHex').value = BRAND.color;
+  document.getElementById('swatches').innerHTML = SWATCHES.map(c =>
+    `<button type="button" class="sw ${c.toLowerCase() === BRAND.color.toLowerCase() ? 'on' : ''}" style="background:${c}" data-color="${c}" aria-label="${c}"></button>`).join('');
+  document.getElementById('topLogo').innerHTML = BRAND.logo ? `<img src="${BRAND.logo}" alt="Logo">` : '';
+  document.getElementById('brandTitle').textContent = BRAND.title;
+}
+
+// =====================================================================
+// =====================================================================
+// RENDER (version 1 interface: dropdowns + tabs)
 // =====================================================================
 function render() {
   const sports = [...new Set(DATA.map(r => r.sport))].sort();
@@ -644,8 +793,7 @@ function render() {
   const p = prevDate(recs, S.date);
   document.getElementById('compareNote').textContent = p ? `Compared to ${fmtDate(p)}` : 'First test day on file. Nothing to compare yet.';
 
-  const warnBox = document.getElementById('warnings');
-  warnBox.innerHTML = WARN.length ? `<details class="warn"><summary>${WARN.length} cell${WARN.length > 1 ? 's' : ''} could not be read. Click to see which.</summary>
+  document.getElementById('warnings').innerHTML = WARN.length ? `<details class="warn"><summary>${WARN.length} cell${WARN.length > 1 ? 's' : ''} could not be read. Click to see which.</summary>
     <ul>${WARN.map(w => `<li>${esc(w)}</li>`).join('')}</ul></details>` : '';
 
   const tests = testsIn(recs);
@@ -653,12 +801,26 @@ function render() {
   if (!tabs.some(x => x[0] === S.tab)) S.tab = 'overview';
   document.getElementById('tabs').innerHTML = tabs.map(([k, l]) => `<button type="button" class="tab ${k === S.tab ? 'on' : ''}" data-tab="${k}">${esc(l)}</button>`).join('');
 
+  // Athlete picker sits in the controls row on the Athlete Reports tab
+  const athBox = document.getElementById('athleteBox');
+  athBox.hidden = S.tab !== 'athletes';
+  if (!athBox.hidden) {
+    const list = athletesOnDay();
+    if (list.length && (!S.athlete || !list.some(r => r.id === S.athlete))) S.athlete = list[0].id;
+    const i = list.findIndex(r => r.id === S.athlete);
+    document.getElementById('athleteSel').innerHTML = list.map(r =>
+      `<option value="${esc(r.id)}" ${r.id === S.athlete ? 'selected' : ''}>${esc(r.name)}${S.sport === '__all' ? ' (' + esc(r.sport) + ')' : ''}</option>`).join('');
+    athBox.querySelector('[data-step="-1"]').disabled = i <= 0;
+    athBox.querySelector('[data-step="1"]').disabled = i >= list.length - 1;
+  }
+
   const t = TESTS.find(t => t.key === S.tab);
-  const view = document.getElementById('view');
-  view.innerHTML = S.tab === 'overview' ? viewOverview() : S.tab === 'athletes' ? viewAthletes() : S.tab === 'wall' ? viewWall() : viewTest(t);
+  document.getElementById('view').innerHTML =
+    S.tab === 'overview' ? viewOverview() : S.tab === 'athletes' ? viewAthletes() : S.tab === 'wall' ? viewWall() : viewTest(t);
   document.getElementById('printAllBtn').hidden = S.tab !== 'athletes';
   document.getElementById('printBtn').textContent = S.tab === 'athletes' ? 'Print this athlete' : 'Print this page';
 }
+const rerender = () => { if (DATA.length) render(); };
 
 // =====================================================================
 // PRINT
@@ -677,8 +839,6 @@ window.addEventListener('afterprint', () => {
 // =====================================================================
 // EVENTS
 // =====================================================================
-document.getElementById('brandTitle').textContent = CONFIG.title;
-
 document.getElementById('file').addEventListener('change', e => {
   const f = e.target.files[0];
   if (!f) return;
@@ -693,19 +853,18 @@ document.getElementById('file').addEventListener('change', e => {
 document.getElementById('demoBtn').addEventListener('click', loadDemo);
 document.getElementById('sportSel').addEventListener('change', e => { S.sport = e.target.value; render(); });
 document.getElementById('dateSel').addEventListener('change', e => { S.date = e.target.value; render(); });
-document.getElementById('tabs').addEventListener('click', e => {
-  const b = e.target.closest('[data-tab]');
-  if (b) { S.tab = b.dataset.tab; render(); }
-});
-document.getElementById('view').addEventListener('change', e => {
-  if (e.target.id === 'athleteSel') { S.athlete = e.target.value; render(); }
-});
-document.getElementById('view').addEventListener('click', e => {
+document.getElementById('athleteSel').addEventListener('change', e => { S.athlete = e.target.value; render(); });
+document.getElementById('athleteBox').addEventListener('click', e => {
   const b = e.target.closest('[data-step]');
   if (!b) return;
+  e.preventDefault();
   const list = athletesOnDay();
   const i = list.findIndex(r => r.id === S.athlete) + +b.dataset.step;
   if (list[i]) { S.athlete = list[i].id; render(); }
+});
+document.getElementById('tabs').addEventListener('click', e => {
+  const b = e.target.closest('[data-tab]');
+  if (b) { S.tab = b.dataset.tab; render(); }
 });
 document.getElementById('printBtn').addEventListener('click', () => { setPageSize(S.tab === 'wall'); window.print(); });
 document.getElementById('printAllBtn').addEventListener('click', () => {
@@ -713,6 +872,48 @@ document.getElementById('printAllBtn').addEventListener('click', () => {
   document.body.classList.add('print-all');
   setPageSize(false);
   window.print();
+});
+
+// Branding settings
+const modal = document.getElementById('brandModal');
+document.getElementById('brandBtn').addEventListener('click', () => { modal.hidden = false; });
+document.getElementById('brandClose').addEventListener('click', () => { modal.hidden = true; });
+modal.addEventListener('click', e => {
+  if (e.target === modal) { modal.hidden = true; return; }
+  const b = e.target.closest('[data-color]');
+  if (b) { BRAND.color = b.dataset.color; saveBrand(); applyBrand(); }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') modal.hidden = true; });
+document.getElementById('titleIn').addEventListener('input', e => { BRAND.title = e.target.value || CONFIG.title; saveBrand(); applyBrand(); rerender(); });
+document.getElementById('colorIn').addEventListener('input', e => { BRAND.color = e.target.value; saveBrand(); applyBrand(); });
+document.getElementById('colorHex').addEventListener('change', e => {
+  if (/^#[0-9a-f]{6}$/i.test(e.target.value)) { BRAND.color = e.target.value; saveBrand(); }
+  applyBrand();
+});
+document.getElementById('logoIn').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    // Shrink the logo so it fits in browser storage.
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, 400 / img.height);
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      BRAND.logo = c.toDataURL('image/png');
+      saveBrand(); applyBrand(); rerender();
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(f);
+  e.target.value = '';
+});
+document.getElementById('logoClear').addEventListener('click', () => { BRAND.logo = ''; saveBrand(); applyBrand(); rerender(); });
+document.getElementById('brandReset').addEventListener('click', () => {
+  BRAND.title = CONFIG.title; BRAND.color = SWATCHES[0]; BRAND.logo = '';
+  saveBrand(); applyBrand(); rerender();
 });
 
 // =====================================================================
@@ -761,6 +962,8 @@ function loadDemo() {
   loadWorkbook(wb);
 }
 
+applyBrand();
+// (reports render once a file or sample data is loaded)
 if (typeof XLSX === 'undefined') {
   document.getElementById('libError').hidden = false;
 } else if (location.hash.startsWith('#demo')) {
