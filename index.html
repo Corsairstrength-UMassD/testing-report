@@ -175,7 +175,8 @@
   </div>
   <div class="actions">
     <label class="btn primary">Upload Excel or CSV<input type="file" id="file" accept=".xlsx,.xls,.csv" hidden></label>
-    <a class="btn" href="testing-template.xlsx" download>Download template</a>
+    <a class="btn" href="testing-template.xlsx" download title="One tab, a Date column on every row">Template: one tab</a>
+    <a class="btn" href="testing-template-tab-per-day.xlsx" download title="One tab per testing day, named with the date">Template: tab per day</a>
     <button class="btn" id="demoBtn" type="button">Try sample data</button>
     <button class="btn" id="brandBtn" type="button">Branding</button>
   </div>
@@ -185,7 +186,7 @@
   <section id="empty" class="empty no-print">
     <h2>Upload your testing sheet</h2>
     <ol>
-      <li>Fill in the template: one row per athlete per testing day.</li>
+      <li>Pick a template. <b>One tab:</b> every row has a Date. <b>Tab per day:</b> each tab is one testing day, named with the date (1.24.26).</li>
       <li>Type lifts as weight x reps (315x5). The tool calculates the estimated max.</li>
       <li>Click <b>Upload Excel or CSV</b> and pick your file.</li>
       <li>Pick a sport and a test day, then print what you need.</li>
@@ -253,6 +254,9 @@ const TESTS = [
   { key: 'fs',    label: 'Front Squat',       short: 'FS',    type: 'lift',       unit: 'lb', better: 'high', aliases: ['front squat', 'front squat (reps)', 'fs'] },
   { key: 'tbdl',  label: 'Trap Bar Deadlift', short: 'TBDL',  type: 'lift',       unit: 'lb', better: 'high', aliases: ['trap bar dl', 'trap bar deadlift', 'trap bar', 'tbdl'] },
   { key: 'bench', label: 'Bench Press',       short: 'Bench', type: 'lift',       unit: 'lb', better: 'high', aliases: ['bench', 'bench press', 'bench (reps)'] },
+  { key: 'ssb',   label: 'Safety Bar Squat',  short: 'SSB',   type: 'lift',       unit: 'lb', better: 'high', aliases: ['safety bar squat', 'safety bar squat (reps)', 'safety bar', 'ssb', 'sb squat'] },
+  { key: 'push',  label: 'Push-Up',           short: 'Push-Up', type: 'count',    unit: 'reps', better: 'high', aliases: ['push-up', 'push-ups', 'pushup', 'pushups', 'push up', 'push ups'] },
+  { key: 'chin',  label: 'Chin-Up',           short: 'Chin-Up', type: 'count',    unit: 'reps', better: 'high', aliases: ['chin-up', 'chin-ups', 'chinup', 'chinups', 'chin up', 'chin ups'] },
 ];
 
 // =====================================================================
@@ -325,7 +329,7 @@ function parseNum(v) {
   if (isNaN(n) || !/\d/.test(s)) return { error: `"${s}" is not a number.` };
   return { value: n };
 }
-const PARSE = { lift: parseLift, feetinches: parseBroad, time: parseNum, number: parseNum };
+const PARSE = { lift: parseLift, feetinches: parseBroad, time: parseNum, number: parseNum, count: parseNum };
 
 const ymd = (y, m, d) => `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 function parseDate(v) {
@@ -341,6 +345,16 @@ function parseDate(v) {
   m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
   if (m) return ymd(+m[1], +m[2], +m[3]);
   return null;
+}
+// Finds a full date (month, day, year) anywhere in a tab name. "Week 1.26-1.31" has no year, so it returns null.
+function dateFromTabName(name) {
+  // Same separator both times (1.24.26, not 3.9-3.13), and not part of a longer number run.
+  const m = clean(name).match(/(?<![\d.\-\/])(\d{1,2})([.\-\/])(\d{1,2})\2(\d{2}|\d{4})(?![\d.\-\/])/);
+  if (!m) return null;
+  const mo = +m[1], d = +m[3];
+  let y = +m[4]; if (y < 100) y += 2000;
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+  return ymd(y, mo, d);
 }
 function displayName(s) {
   s = clean(s);
@@ -382,12 +396,17 @@ function loadWorkbook(wb) {
       if (t) testCols.push({ t, i });
     });
     if (!testCols.length) return;
-    if (col.date < 0) { warn.push(`Tab "${sn}" skipped: it has no Date column.`); return; }
+    // No Date column? Use the date in the tab name (1.24.26, 3-15-26, Testing 8/12/26).
+    const tabDate = dateFromTabName(sn);
+    if (col.date < 0 && !tabDate) {
+      warn.push(`Tab "${sn}" skipped: no Date column, and the tab name has no full date (example: 1.24.26).`);
+      return;
+    }
     for (let r = hi + 1; r < rows.length; r++) {
       const row = rows[r] || [];
       const raw = clean(row[col.name]);
       if (!raw) continue;
-      const date = parseDate(row[col.date]);
+      const date = (col.date >= 0 && parseDate(row[col.date])) || tabDate;
       const where = `Tab "${sn}", row ${r + 1} (${displayName(raw)})`;
       if (!date) { warn.push(`${where}: missing or unreadable date.`); continue; }
       const rec = {
@@ -433,8 +452,10 @@ function loadWorkbook(wb) {
   WARN = warn;
   if (!DATA.length) {
     alert('No testing data found in this file.\n\n' +
-      'The tool reads one row per athlete per testing day, with columns named Date, Name, and at least one test (like Vertical or Back Squat). Sport and Position are optional.\n\n' +
-      'Click "Download template" for a sheet that is ready to fill in.');
+      'The tool reads two layouts:\n' +
+      '- One tab with a Date column, a Name column, and test columns.\n' +
+      '- One tab per testing day, named with the date (1.24.26), with a Name column and test columns.\n\n' +
+      'Click "Template: one tab" or "Template: tab per day" for a sheet that is ready to fill in.');
     return;
   }
 
@@ -472,6 +493,7 @@ function fmt(t, v, opts = {}) {
   if (t.type === 'lift') s = String(Math.round(v));
   else if (t.type === 'feetinches') return fmtFtIn(v);
   else if (t.type === 'time') s = (Math.round(v * 1000) / 1000).toFixed(Math.round(v * 1000) % 10 ? 3 : 2);
+  else if (t.type === 'count') s = String(Math.round(v * 10) / 10);  // reps: 31, or 31.5 for a team average
   else s = (Math.round(v * 10) / 10).toFixed(1);
   return opts.unit ? `${s} ${t.unit}` : s;
 }
