@@ -506,9 +506,24 @@ function ranked(recs, d, t) {
   list.forEach((x, i) => { x.rank = i > 0 && list[i - 1].v === x.v ? list[i - 1].rank : i + 1; });
   return list;
 }
+// Each test compares to the last time THAT test was done, per athlete
+// (a lift day is compared to the last lift day, not to last week's jump session).
+function prevResult(recs, id, t, d) {
+  let best = null;
+  recs.forEach(r => { if (r.id === id && r.date < d && r.values[t.key] != null && (!best || r.date > best.date)) best = r; });
+  return best ? best.values[t.key] : null;
+}
+function prevMap(recs, d, t) {
+  const m = new Map();
+  onDay(recs, d).forEach(r => { if (r.values[t.key] != null) { const v = prevResult(recs, r.id, t, d); if (v != null) m.set(r.id, v); } });
+  return m;
+}
+function prevDateFor(recs, d, t) {
+  const ds = recs.filter(r => r.date < d && r.values[t.key] != null).map(r => r.date).sort();
+  return ds.length ? ds[ds.length - 1] : null;
+}
 function improvements(recs, d, p, t) {
-  if (!p) return [];
-  const prev = valMap(recs, p, t);
+  const prev = prevMap(recs, d, t);
   return onDay(recs, d).filter(r => r.values[t.key] != null && prev.has(r.id))
     .map(r => ({ r, cur: r.values[t.key], prev: prev.get(r.id), g: gain(t, r.values[t.key], prev.get(r.id)) }))
     .sort((a, b) => b.g - a.g);
@@ -524,9 +539,9 @@ function reportHead(title, subtitle, rightName, rightSub) {
     </div>
     <div class="rtitle"><h1>${esc(title)}</h1><div class="rsub">${subtitle}</div></div>`;
 }
-function dayLine() {
-  const p = prevDate(scope(), S.date);
-  return `${fmtDate(S.date)}${p ? ` vs ${fmtDate(p)}` : ''}`;
+function dayLine(t) {
+  if (t) { const p = prevDateFor(scope(), S.date, t); return `${fmtDate(S.date)}${p ? ` vs ${fmtDate(p)}` : ''}`; }
+  return `${fmtDate(S.date)} vs each test's last result`;
 }
 function foot(what) { return `<div class="rfoot">${caps(BRAND.title)} &nbsp;•&nbsp; ${esc(what)}</div>`; }
 function kpis(items) {
@@ -619,12 +634,12 @@ function positionTable(day, tests) {
 }
 
 function viewTest(t) {
-  const recs = scope(), d = S.date, p = prevDate(recs, d);
+  const recs = scope(), d = S.date, p = prevDateFor(recs, d, t);
   const list = ranked(recs, d, t);
   const order = t.better === 'low' ? 'FASTEST FIRST' : 'BEST FIRST';
   const sub = `TEAM SUMMARY // RANKED BY ${caps(t.label)} (${order}) // ${caps(sportLabel())}`;
-  if (!list.length) return reportHead(`${t.label} Leaderboard`, sub, sportLabel(), dayLine()) + `<p class="note">Nobody has a ${esc(t.label)} result on this test day.</p>`;
-  const prev = p ? valMap(recs, p, t) : new Map();
+  if (!list.length) return reportHead(`${t.label} Leaderboard`, sub, sportLabel(), dayLine(t)) + `<p class="note">Nobody has a ${esc(t.label)} result on this test day.</p>`;
+  const prev = prevMap(recs, d, t);
   const imp = improvements(recs, d, p, t);
   const best = imp.length && imp[0].g > 0 ? imp[0] : null;
   const hasPos = list.some(x => x.r.position);
@@ -637,7 +652,7 @@ function viewTest(t) {
       <td class="n">${prev.has(x.r.id) ? fmt(t, prev.get(x.r.id)) : ''}</td>
       <td class="n"><b>${fmt(t, x.v)}</b></td>
       <td class="n">${fmt(t, bestOf(t, h))}</td>
-      <td class="n">${p ? fmtChange(t, x.v, prev.get(x.r.id)) : ''}</td></tr>`;
+      <td class="n">${fmtChange(t, x.v, prev.get(x.r.id))}</td></tr>`;
   }).join('');
   const trend = datesIn(recs).map(dd => {
     const v = recs.filter(r => r.date === dd && r.values[t.key] != null).map(r => r.values[t.key]);
@@ -651,7 +666,7 @@ function viewTest(t) {
       ${areaChart(h, t, { mini: true, w: 240, h: 54 })}
       <div class="acf">${h.length} test${h.length > 1 ? 's' : ''} on file • best ${fmt(t, bestOf(t, h))}${x.r.position ? ' • ' + esc(x.r.position) : ''}</div></div></div>`;
   }).join('');
-  return reportHead(`${t.label} Leaderboard`, sub, sportLabel(), dayLine()) +
+  return reportHead(`${t.label} Leaderboard`, sub, sportLabel(), dayLine(t)) +
     kpis([[list.length, 'Athletes tested'], [fmt(t, avg(list.map(x => x.v))) + (unit ? ' ' + unit : ''), 'Team average'],
       [fmt(t, list[0].v) + (unit ? ' ' + unit : ''), `Leader - ${esc(list[0].r.name)}`],
       [best ? fmtChange(t, best.cur, best.prev).replace(/class="(up|down)"/, '') : '-', best ? `Most improved - ${esc(best.r.name)}` : 'Most improved']]) +
@@ -660,25 +675,24 @@ function viewTest(t) {
     ${trend.length > 1 ? box('Team average by test day', `${trend.length} test days`, areaChart(trend, t) + (t.better === 'low' ? '<div class="note">Lower is better. Chart is flipped so up means faster.</div>' : '')) : ''}
     <div class="cards3 athletes">${cards}</div>
     ${hasPos ? positionTable(onDay(recs, d), [t]) : ''}
-    <div class="note">Ranked by ${esc(t.label)} on ${fmtDate(d)}. Change compares to each athlete's last test${p ? ` (${fmtDate(p)})` : ''}.</div>` + foot(`${t.label} Leaderboard`);
+    <div class="note">Ranked by ${esc(t.label)} on ${fmtDate(d)}. Change compares to each athlete's last ${esc(t.label)} result${p ? ` (last team test: ${fmtDate(p)})` : ''}.</div>` + foot(`${t.label} Leaderboard`);
 }
 
 function athletesOnDay() {
   return onDay(scope(), S.date).sort((a, b) => a.name.localeCompare(b.name));
 }
 function athleteReport(id) {
-  const recs = scope(), d = S.date, p = prevDate(recs, d);
+  const recs = scope(), d = S.date;
   const mine = recs.filter(r => r.id === id).sort((a, b) => a.date.localeCompare(b.date));
   if (!mine.length) return '';
   const me = mine[mine.length - 1];
   const cur = mine.find(r => r.date === d);
-  const prevRec = p ? mine.find(r => r.date === p) : null;
   const tests = testsIn(mine);
   let prs = 0, improved = 0, bestRank = null;
   const cards = [], rows = [];
   tests.forEach(t => {
     const v = cur ? cur.values[t.key] : null;
-    const pv = prevRec ? prevRec.values[t.key] : null;
+    const pv = prevResult(recs, id, t, d);  // this athlete's last result on this test
     const list = ranked(recs, d, t);
     const mr = list.find(x => x.r.id === id);
     const h = history(recs, id, t).filter(z => z.d <= d);
@@ -791,7 +805,7 @@ function render() {
   dateSel.innerHTML = [...dates].reverse().map(d => `<option value="${d}">${fmtDate(d)}</option>`).join('');
   dateSel.value = S.date;
   const p = prevDate(recs, S.date);
-  document.getElementById('compareNote').textContent = p ? `Compared to ${fmtDate(p)}` : 'First test day on file. Nothing to compare yet.';
+  document.getElementById('compareNote').textContent = p ? 'Each test compares to the last time it was done.' : 'First test day on file. Nothing to compare yet.';
 
   document.getElementById('warnings').innerHTML = WARN.length ? `<details class="warn"><summary>${WARN.length} cell${WARN.length > 1 ? 's' : ''} could not be read. Click to see which.</summary>
     <ul>${WARN.map(w => `<li>${esc(w)}</li>`).join('')}</ul></details>` : '';
